@@ -20,13 +20,5 @@ flowchart TD
 
 The Synthea JAR itself is not included here. At a high level, Synthea is a Java application that simulates patients through state-machine modules and exports synthetic health records.
 
-```mermaid
-flowchart TD
-    AA[CLI / Java entry] --> BB[Generator]
-    BB --> CC[Modules & States]
-    CC --> DD[Patient records]
-    DD --> EE[Exporters (CSV/FHIR/HL7)]
-    EE --> FF[Output directory]
-```
 
 The CLI simply launches this JAR with user-supplied arguments to control the simulation size, output location, and other options.
