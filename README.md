@@ -15,6 +15,7 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
 4. [Project Layout](#project-layout)  
 5. [Contributing](#contributing)  
 6. [License & Credits](#license--credits)
+7. [Architecture](#architecture)
 
 ---
 
@@ -147,3 +148,7 @@ Issues and feature requests welcome!
 ---
 
 Happy generating! 🎉
+
+## Architecture
+
+See [docs/Architecture.md](docs/Architecture.md) for diagrams of the CLI flow and a high-level overview of the Synthea JAR.
