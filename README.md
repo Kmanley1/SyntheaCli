@@ -7,15 +7,23 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
 
 ## Table of Contents
 
-1. [Features](#features)  
-2. [Quick Start](#quick-start)  
-   • [Prerequisites](#prerequisites) · [Install as dotnet-tool](#install-as-a-global-tool) · [Run](#run)  
-3. [Developer Guide](#developer-guide)  
-   • [Clone & Build](#clone--build) · [Unit Tests](#unit-tests) · [Docker](#docker) · [setup.sh](#setupsh-for-ci--codex)  
-4. [Project Layout](#project-layout)  
-5. [Contributing](#contributing)  
-6. [License & Credits](#license--credits)
-7. [Architecture](#architecture)
+- [Synthea-CLI](#synthea-cli)
+  - [Table of Contents](#table-of-contents)
+  - [Features](#features)
+  - [Quick Start](#quick-start)
+    - [Prerequisites](#prerequisites)
+    - [Install as a global tool](#install-as-a-global-tool)
+    - [Run](#run)
+  - [Developer Guide](#developer-guide)
+    - [Clone \& Build](#clone--build)
+    - [Unit Tests](#unit-tests)
+    - [Docker](#docker)
+    - [`setup.sh` for CI / Codex](#setupsh-for-ci--codex)
+      - [GitHub Actions example](#github-actions-example)
+  - [Project Layout](#project-layout)
+  - [Contributing](#contributing)
+  - [License \& Credits](#license--credits)
+  - [Architecture](#architecture)
 
 ---
 
@@ -36,8 +44,8 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
 
 ### Prerequisites
 
-* **.NET 8 SDK** — <https://dotnet.microsoft.com/download>  
-* **Java ≥ 17** in your `PATH` (`java -version`) – *only required at runtime*.
+- **.NET 8 SDK** — <https://dotnet.microsoft.com/download>  
+- **Java ≥ 17** in your `PATH` (`java -version`) – *only required at runtime*.
 
 ### Install as a global tool
 
@@ -99,7 +107,7 @@ docker run --rm -v "$PWD/out":/data synthea-cli            -- --state CA -p 100 
 1. Installs OpenJDK 17 and .NET 8 on Ubuntu runners  
 2. Restores & publishes `Synthea.Cli` to `/workspace/synthea-cli/bin`
 
-**GitHub Actions example**
+#### GitHub Actions example
 
 ```yaml
 steps:
@@ -112,18 +120,32 @@ steps:
 
 ## Project Layout
 
-```
+```text
 synthea-cli/
-├─ .gitattributes          # *.sh => LF
+├─ .gitattributes                # enforce LF for shell scripts
 ├─ .gitignore
-├─ Dockerfile              # multi-stage build
-├─ setup.sh                # CI / Codex build script
-├─ run/setup.sh            # thin wrapper for Codex harness
-├─ Synthea.sln
-├─ Synthea.Cli/
-│   ├─ Program.cs          # System.CommandLine entry point
-│   └─ JarManager.cs       # JAR download & cache helper
-└─ Synthea.Cli.Tests/      # xUnit + FluentAssertions
+├─ README.md
+├─ synthea-cli.code-workspace    # VS Code workspace file
+├─ setup.sh                      # CI / Codex build script
+├─ docs/
+│   └─ Architecture.md           # CLI flow diagrams & overview
+├─ scripts/
+│   ├─ synthea-cli-create.ps1    # helper to scaffold new CLI repo
+│   └─ windows/
+│       └─ install-vscode-extensions.ps1
+├─ run/
+│   └─ setup.sh                  # thin wrapper for Codex harness
+├─ Synthea.Cli.sln               # Visual Studio solution
+├─ Synthea.Cli/                  # main CLI project
+│   ├─ Program.cs                # System.CommandLine entry point
+│   ├─ JarManager.cs             # JAR download & cache helper
+│   └─ Synthea.Cli.csproj
+├─ Synthea.Cli.Tests/            # unit tests (xUnit)
+│   ├─ CliTests.cs
+│   ├─ JarManagerTests.cs
+│   ├─ ProgramHandlerTests.cs
+│   └─ Synthea.Cli.Tests.csproj
+└─ synthea-output/               # default data output (git-ignored)
 ```
 
 ---
@@ -141,9 +163,10 @@ Issues and feature requests welcome!
 
 ## License & Credits
 
-* **Tool code** © 2025 Ken Manley — MIT License (`LICENSE`).  
-* **Synthea™** is © MITRE, Apache-2.0. This CLI downloads the official Synthea JAR but is **not** an official MITRE project.  
-* Uses **System.CommandLine** (`2.0.0-beta4`) under MIT.
+- **Tool code** © 2025 Ken Manley — MIT License (`LICENSE`).  
+
+- **Synthea™** is © MITRE, Apache-2.0. This CLI downloads the official Synthea JAR but is **not** an official MITRE project.  
+- Uses **System.CommandLine** (`2.0.0-beta4`) under MIT.
 
 ---
 
