@@ -49,7 +49,7 @@ internal static class Program
             "--refresh",
             "Ignore cached JAR and download the newest release");
 
-        var javaOpt = new Option<FileInfo?>(
+        var javaOpt = new Option<string?>(
             "--java-path",
             () => null,
             "Full path to the Java executable (defaults to 'java' on PATH)");
@@ -89,8 +89,9 @@ internal static class Program
 
         runCmd.SetHandler(async (InvocationContext ctx) =>
         {
-            var refresh   = ctx.ParseResult.GetValueForOption(refreshOpt);
-            var javaPath  = ctx.ParseResult.GetValueForOption(javaOpt)?.FullName ?? "java";
+            var refresh      = ctx.ParseResult.GetValueForOption(refreshOpt);
+            var javaPathArg  = ctx.ParseResult.GetValueForOption(javaOpt);
+            var javaPath     = !string.IsNullOrWhiteSpace(javaPathArg) ? javaPathArg : "java";
             var outDir    = ctx.ParseResult.GetValueForOption(outputOpt)!;
             var state     = ctx.ParseResult.GetValueForOption(stateOpt);
             var city      = ctx.ParseResult.GetValueForOption(cityOpt);
