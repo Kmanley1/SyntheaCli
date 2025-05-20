@@ -13,13 +13,15 @@ internal static class JarManager
     private const string JarHint = "with-dependencies.jar";   // asset we want
     private const string ShaHint = ".sha256";                 // checksum (if provided)
 
-    private static readonly HttpClient _http = new()
+    internal static HttpClient Http = new()
     {
         DefaultRequestHeaders =
         {
             UserAgent = { ProductInfoHeaderValue.Parse("synthea-cli/0.1") }
         }
     };
+
+    internal static string? CacheRootOverride { get; set; }
 
     /// <summary>
     /// Ensures the Synthea JAR is present in the local cache.
@@ -30,9 +32,9 @@ internal static class JarManager
         IProgress<(long downloaded, long total)>? prog = null,
         CancellationToken token = default)
     {
-        var cacheDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "synthea-cli");
+        var cacheRoot = CacheRootOverride ??
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var cacheDir = Path.Combine(cacheRoot, "synthea-cli");
 
         Directory.CreateDirectory(cacheDir);
 
@@ -44,7 +46,7 @@ internal static class JarManager
             return new FileInfo(cached);
 
         // --- Query GitHub API for latest release ---
-        var releaseJson = await _http.GetStringAsync(
+        var releaseJson = await Http.GetStringAsync(
             $"https://api.github.com/repos/{Repo}/releases/latest", token);
 
         using var doc = JsonDocument.Parse(releaseJson);
@@ -79,7 +81,7 @@ internal static class JarManager
             // --- Optional checksum verification ---
             if (shaUrl is not null)
             {
-                var expected = (await _http.GetStringAsync(shaUrl, token))
+                var expected = (await Http.GetStringAsync(shaUrl, token))
                                .Split(' ', StringSplitOptions.RemoveEmptyEntries)[0]
                                .Trim();
                 var actual = await HashFileAsync(tmpFile, token);
@@ -105,7 +107,7 @@ internal static class JarManager
         CancellationToken token)
     {
         // HttpResponseMessage implements IDisposable (not IAsyncDisposable) → plain using
-        using var resp = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token);
+        using var resp = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token);
         resp.EnsureSuccessStatusCode();
 
         var total = resp.Content.Headers.ContentLength ?? -1L;
