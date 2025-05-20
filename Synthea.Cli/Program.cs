@@ -7,8 +7,39 @@ using System.Diagnostics;
 
 namespace Synthea.Cli;
 
+internal interface IProcessRunner
+{
+    IProcess Start(ProcessStartInfo psi);
+}
+
+internal interface IProcess : IDisposable
+{
+    StreamReader StandardOutput { get; }
+    StreamReader StandardError  { get; }
+    Task WaitForExitAsync();
+    int ExitCode { get; }
+}
+
+internal sealed class DefaultProcessRunner : IProcessRunner
+{
+    public IProcess Start(ProcessStartInfo psi) => new ProcessWrapper(Process.Start(psi)!);
+
+    private sealed class ProcessWrapper : IProcess
+    {
+        private readonly Process _proc;
+        public ProcessWrapper(Process proc) => _proc = proc;
+        public StreamReader StandardOutput => _proc.StandardOutput;
+        public StreamReader StandardError  => _proc.StandardError;
+        public Task WaitForExitAsync() => _proc.WaitForExitAsync();
+        public int ExitCode => _proc.ExitCode;
+        public void Dispose() => _proc.Dispose();
+    }
+}
+
 internal static class Program
 {
+    internal static IProcessRunner Runner { get; set; } = new DefaultProcessRunner();
+    internal static Func<bool, IProgress<(long, long)>?, CancellationToken, Task<FileInfo>> EnsureJarAsyncFunc { get; set; } = JarManager.EnsureJarAsync;
     public static async Task<int> Main(string[] args)
     {
         // ───── root command & global options ─────
@@ -68,10 +99,11 @@ internal static class Program
             Directory.CreateDirectory(outDir.FullName);
 
             // download or reuse JAR
-            var jar = await JarManager.EnsureJarAsync(
-                          forceRefresh: refresh,
-                          prog: new Progress<(long dl, long total)>(p =>
-                              Console.Write($"\rDownloading Synthea {p.dl / 1_000_000}/{p.total / 1_000_000} MB…")));
+            var jar = await EnsureJarAsyncFunc(
+                          refresh,
+                          new Progress<(long dl, long total)>(p =>
+                              Console.Write($"\rDownloading Synthea {p.dl / 1_000_000}/{p.total / 1_000_000} MB…")),
+                          ctx.GetCancellationToken());
 
             Console.WriteLine($"\n✓ Using {jar.Name}");
 
@@ -92,7 +124,7 @@ internal static class Program
             foreach (var a in argList) psi.ArgumentList.Add(a);
 
             // launch & relay output
-            using var proc = Process.Start(psi)!;
+            using var proc = Runner.Start(psi);
             var pumpOut = Task.Run(() => Relay(proc.StandardOutput, Console.Out));
             var pumpErr = Task.Run(() => Relay(proc.StandardError, Console.Error));
 
