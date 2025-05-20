@@ -1,5 +1,7 @@
 # Synthea-CLI
 
+[![NuGet](https://img.shields.io/nuget/v/synthea-cli.svg)](https://www.nuget.org/packages/synthea-cli/)
+
 `synthea-cli` is a cross-platform **.NET 8** command-line wrapper around **[Synthea™](https://github.com/synthetichealth/synthea)** — MITRE’s open-source synthetic health-record generator.  
 The tool downloads the latest Synthea JAR on first use, caches it locally, and gives you a simple, typed interface plus first-class scripting and container support.
 
@@ -50,7 +52,7 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
 ### Install as a global tool
 
 ```bash
-dotnet tool install --global synthea-cli     --version 0.1.0
+dotnet tool install --global synthea-cli --version 0.1.0
 ```
 
 ### Run
