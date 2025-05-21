@@ -20,7 +20,7 @@ public class ProgramHandlerTests : IDisposable
         _jar = new FileInfo(Path.Combine(_tempDir, "synthea.jar"));
         File.WriteAllText(_jar.FullName, "jar");
         Program.Runner = _runner;
-        Program.EnsureJarAsyncFunc = (_,_,_) => Task.FromResult(_jar);
+        Program.EnsureJarAsyncFunc = (_, _, _) => Task.FromResult(_jar);
     }
 
     public void Dispose()
@@ -156,6 +156,61 @@ public class ProgramHandlerTests : IDisposable
     {
         var outDir = Path.Combine(_tempDir, "out13");
         var code = await Program.Main(new[] { "run", "--output", outDir, "--module-dir", Path.Combine(_tempDir, "nope") });
+        Assert.NotEqual(0, code);
+    }
+
+    [Fact]
+    public async Task SnapshotArguments_ValidInput()
+    {
+        var init = Path.Combine(_tempDir, "snap_in.json");
+        File.WriteAllText(init, "snap");
+        var upd = Path.Combine(_tempDir, "snap_out.json");
+        var outDir = Path.Combine(_tempDir, "out17");
+        var code = await Program.Main(new[] {
+            "run", "--output", outDir,
+            "--initial-snapshot", init,
+            "--updated-snapshot", upd,
+            "--days-forward", "15" });
+        Assert.Equal(0, code);
+        var list = _runner.StartInfo!.ArgumentList;
+        Assert.Contains("-i", list);
+        Assert.Contains(init, list);
+        Assert.Contains("-u", list);
+        Assert.Contains(upd, list);
+        Assert.Contains("-t", list);
+        Assert.Contains("15", list);
+    }
+
+    [Fact]
+    public async Task SnapshotArguments_InvalidInput()
+    {
+        var outDir = Path.Combine(_tempDir, "out18");
+        var code1 = await Program.Main(new[] { "run", "--output", outDir, "--initial-snapshot", Path.Combine(_tempDir, "missing.json") });
+        Assert.NotEqual(0, code1);
+
+        var init = Path.Combine(_tempDir, "snap_in2.json");
+        File.WriteAllText(init, "snap");
+        var code2 = await Program.Main(new[] { "run", "--output", outDir, "--initial-snapshot", init, "--days-forward", "0" });
+        Assert.NotEqual(0, code2);
+    }
+
+    [Fact]
+    public async Task FormatArgument_ValidFormat()
+    {
+        var outDir = Path.Combine(_tempDir, "out19");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "--format", "FHIR", "--format", "CSV" });
+        Assert.Equal(0, code);
+        var list = _runner.StartInfo!.ArgumentList;
+        Assert.Contains("--exporter.fhir.export=true", list);
+        Assert.Contains("--exporter.csv.export=true", list);
+        Assert.Contains("--exporter.ccda.export=false", list);
+    }
+
+    [Fact]
+    public async Task FormatArgument_InvalidFormat()
+    {
+        var outDir = Path.Combine(_tempDir, "out20");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "--format", "BAD" });
         Assert.NotEqual(0, code);
     }
 
