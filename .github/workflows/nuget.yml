@@ -4,9 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-    branches:
-      - main
-      - master
 
 jobs:
   publish:
@@ -21,7 +18,10 @@ jobs:
           if [ "$GITHUB_REF_TYPE" = "tag" ]; then
             echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
           else
-            echo "VERSION=0.0.0-${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+            echo "VERSION=0.0.0-test" >> $GITHUB_ENV
+
+
           fi
       - name: Pack
         run: dotnet pack Synthea.Cli/Synthea.Cli.csproj -c Release /p:ContinuousIntegrationBuild=true /p:PackageVersion=${{ env.VERSION }}
