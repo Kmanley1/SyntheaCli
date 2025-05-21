@@ -73,6 +73,16 @@ internal static class Program
             "--city",
             description: "City name (optional second positional arg after state)");
 
+        var popOpt = new Option<int?>(
+            aliases: new[] { "--population", "-p" },
+            description: "Number of patients to generate");
+        popOpt.AddValidator(r =>
+        {
+            if (r.Tokens.Count == 0) return;
+            if (!int.TryParse(r.Tokens[0].Value, out var v) || v <= 0)
+                r.ErrorMessage = "Population must be a positive integer.";
+        });
+
         // capture *any* additional Synthea flags
         var passthru = new Argument<string[]>("args")
         {
@@ -83,6 +93,7 @@ internal static class Program
         runCmd.AddOption(outputOpt);
         runCmd.AddOption(stateOpt);
         runCmd.AddOption(cityOpt);
+        runCmd.AddOption(popOpt);
         runCmd.AddArgument(passthru);
         // Forward any unrecognized options directly to Synthea
         runCmd.TreatUnmatchedTokensAsErrors = false;
@@ -95,6 +106,7 @@ internal static class Program
             var outDir    = ctx.ParseResult.GetValueForOption(outputOpt)!;
             var state     = ctx.ParseResult.GetValueForOption(stateOpt);
             var city      = ctx.ParseResult.GetValueForOption(cityOpt);
+            var pop       = ctx.ParseResult.GetValueForOption(popOpt);
             var rest      = ctx.ParseResult.GetValueForArgument(passthru);
 
             Directory.CreateDirectory(outDir.FullName);
@@ -109,7 +121,13 @@ internal static class Program
             Console.WriteLine($"\n✓ Using {jar.Name}");
 
             // build complete arg list: user flags first, then state/city
-            var argList = new List<string>(rest);
+            var argList = new List<string>();
+            if (pop.HasValue)
+            {
+                argList.Add("-p");
+                argList.Add(pop.Value.ToString());
+            }
+            argList.AddRange(rest);
             if (!string.IsNullOrWhiteSpace(state)) argList.Add(state);
             if (!string.IsNullOrWhiteSpace(city))  argList.Add(city);
 
