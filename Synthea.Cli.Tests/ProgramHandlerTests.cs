@@ -103,6 +103,89 @@ public class ProgramHandlerTests : IDisposable
         Assert.Equal(args1, args2);
     }
 
+    [Fact]
+    public async Task ForwardsGenderOption()
+    {
+        var outDir = Path.Combine(_tempDir, "out8");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "--gender", "M" });
+        Assert.Equal(0, code);
+        Assert.Contains("--gender", _runner.StartInfo!.ArgumentList);
+        Assert.Contains("M", _runner.StartInfo!.ArgumentList);
+    }
+
+    [Fact]
+    public async Task InvalidGenderReturnsError()
+    {
+        var outDir = Path.Combine(_tempDir, "out9");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "--gender", "X" });
+        Assert.NotEqual(0, code);
+    }
+
+    [Fact]
+    public async Task ForwardsAgeRangeOption()
+    {
+        var outDir = Path.Combine(_tempDir, "out10");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "--age-range", "10-20" });
+        Assert.Equal(0, code);
+        Assert.Contains("--age-range", _runner.StartInfo!.ArgumentList);
+        Assert.Contains("10-20", _runner.StartInfo!.ArgumentList);
+    }
+
+    [Fact]
+    public async Task InvalidAgeRangeReturnsError()
+    {
+        var outDir = Path.Combine(_tempDir, "out11");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "--age-range", "a-b" });
+        Assert.NotEqual(0, code);
+    }
+
+    [Fact]
+    public async Task ForwardsModuleDirOption()
+    {
+        var modDir = Path.Combine(_tempDir, "mods");
+        Directory.CreateDirectory(modDir);
+        var outDir = Path.Combine(_tempDir, "out12");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "--module-dir", modDir });
+        Assert.Equal(0, code);
+        Assert.Contains("--module-dir", _runner.StartInfo!.ArgumentList);
+        Assert.Contains(modDir, _runner.StartInfo!.ArgumentList);
+    }
+
+    [Fact]
+    public async Task InvalidModuleDirReturnsError()
+    {
+        var outDir = Path.Combine(_tempDir, "out13");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "--module-dir", Path.Combine(_tempDir, "nope") });
+        Assert.NotEqual(0, code);
+    }
+
+    [Fact]
+    public async Task ForwardsModuleOption()
+    {
+        var outDir = Path.Combine(_tempDir, "out14");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "--module", "flu", "--module", "covid" });
+        Assert.Equal(0, code);
+        var list = _runner.StartInfo!.ArgumentList;
+        Assert.Equal(new[] { "-jar", _jar.FullName, "--module", "flu", "--module", "covid" }, list);
+    }
+
+    [Fact]
+    public async Task CityWithoutStateReturnsError()
+    {
+        var outDir = Path.Combine(_tempDir, "out15");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "--city", "Austin" });
+        Assert.NotEqual(0, code);
+        Assert.Null(_runner.StartInfo);
+    }
+
+    [Fact]
+    public async Task InvalidStateReturnsError()
+    {
+        var outDir = Path.Combine(_tempDir, "out16");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "--state", "XX" });
+        Assert.NotEqual(0, code);
+    }
+
     private class CapturingRunner : IProcessRunner
     {
         public ProcessStartInfo? StartInfo;
