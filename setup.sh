@@ -3,12 +3,20 @@
 
 set -euo pipefail
 
-# 1) Install runtimes (approx 150 MB)
-sudo apt-get update -qq
-sudo apt-get install -y --no-install-recommends \
-    openjdk-17-jre-headless \
-    dotnet-sdk-8.0 \
- && sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/*
+# 1) Ensure Java 17+ and .NET 8 are present. Skip apt if already installed.
+packages=()
+if ! command -v java >/dev/null; then
+    packages+=(openjdk-17-jre-headless)
+fi
+if ! command -v dotnet >/dev/null; then
+    packages+=(dotnet-sdk-8.0)
+fi
+if [ ${#packages[@]} -ne 0 ]; then
+    sudo apt-get update -qq
+    sudo apt-get install -y --no-install-recommends "${packages[@]}"
+    sudo apt-get clean
+    sudo rm -rf /var/lib/apt/lists/*
+fi
 
 # 2) Restore & publish the CLI
 dotnet restore --nologo
