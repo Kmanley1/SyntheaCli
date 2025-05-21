@@ -24,7 +24,7 @@ public class CliTests
     [Fact]
     public async Task RunCommandAllowsUnknownOptions()
     {
-        var exit = await InvokeMain("run", "--help", "-p", "5");
+        var exit = await InvokeMain("run", "--help", "--unknown", "value");
         Assert.Equal(0, exit);
     }
 }

@@ -53,6 +53,23 @@ public class ProgramHandlerTests : IDisposable
         Assert.Equal("/usr/bin/custom", _runner.StartInfo!.FileName);
     }
 
+    [Fact]
+    public async Task ForwardsPopulationOption()
+    {
+        var outDir = Path.Combine(_tempDir, "out3");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "-p", "42" });
+        Assert.Equal(0, code);
+        Assert.Equal(new[] { "-jar", _jar.FullName, "-p", "42" }, _runner.StartInfo!.ArgumentList);
+    }
+
+    [Fact]
+    public async Task InvalidPopulationReturnsError()
+    {
+        var outDir = Path.Combine(_tempDir, "out4");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "-p", "0" });
+        Assert.NotEqual(0, code);
+    }
+
     private class CapturingRunner : IProcessRunner
     {
         public ProcessStartInfo? StartInfo;
