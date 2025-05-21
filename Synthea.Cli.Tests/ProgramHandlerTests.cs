@@ -70,6 +70,39 @@ public class ProgramHandlerTests : IDisposable
         Assert.NotEqual(0, code);
     }
 
+    [Fact]
+    public async Task ForwardsSeedOption()
+    {
+        var outDir = Path.Combine(_tempDir, "out5");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "-s", "123" });
+        Assert.Equal(0, code);
+        Assert.Equal(new[] { "-jar", _jar.FullName, "-s", "123" }, _runner.StartInfo!.ArgumentList);
+    }
+
+    [Fact]
+    public async Task InvalidSeedReturnsError()
+    {
+        var outDir = Path.Combine(_tempDir, "out6");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "-s", "oops" });
+        Assert.NotEqual(0, code);
+    }
+
+    [Fact]
+    public async Task SameSeedProducesSameArguments()
+    {
+        var outDir1 = Path.Combine(_tempDir, "out7a");
+        var code1 = await Program.Main(new[] { "run", "--output", outDir1, "-s", "77" });
+        Assert.Equal(0, code1);
+        var args1 = _runner.StartInfo!.ArgumentList.ToArray();
+
+        var outDir2 = Path.Combine(_tempDir, "out7b");
+        var code2 = await Program.Main(new[] { "run", "--output", outDir2, "-s", "77" });
+        Assert.Equal(0, code2);
+        var args2 = _runner.StartInfo!.ArgumentList.ToArray();
+
+        Assert.Equal(args1, args2);
+    }
+
     private class CapturingRunner : IProcessRunner
     {
         public ProcessStartInfo? StartInfo;
