@@ -59,10 +59,10 @@ dotnet tool install --global synthea-cli --version 0.1.0
 
 ```bash
 # Generate 10 synthetic patients from Ohio into ./output
-synthea run --output ./output -p 10 --state OH
+synthea run --output ./output --population 10 --state OH
 
 # Same, but force-refresh the cached JAR
-synthea --refresh run -o ./output -p 10 --state TX --city Austin
+synthea --refresh run -o ./output --population 10 --state TX --city Austin
 ```
 
 > **Short alias:** `syn` works everywhere `synthea` does.
@@ -78,7 +78,7 @@ git clone https://github.com/Kmanley1/synthea-cli.git
 cd synthea-cli
 dotnet restore
 dotnet build
-dotnet run -- run -o ./out -p 5 --state AK
+dotnet run -- run -o ./out --population 5 --state AK
 ```
 
 ### Unit Tests
@@ -99,7 +99,7 @@ Manual example:
 
 ```bash
 docker build -t synthea-cli .
-docker run --rm -v "$PWD/out":/data synthea-cli            -- --state CA -p 100            # args after --
+docker run --rm -v "$PWD/out":/data synthea-cli            -- --state CA --population 100            # args after --
 ```
 
 ### `setup.sh` for CI / Codex
