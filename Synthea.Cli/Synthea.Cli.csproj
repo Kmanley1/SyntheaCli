@@ -33,5 +33,4 @@
     <InternalsVisibleTo Include="Synthea.Cli.Tests" />
   </ItemGroup>
 
-
 </Project>
