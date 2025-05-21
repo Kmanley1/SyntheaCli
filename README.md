@@ -35,7 +35,7 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
 |---------|---------|
 | **Zero-install JAR** | Automatically fetches the newest `synthea-with-dependencies.jar` from GitHub releases and verifies its SHA-256 checksum. |
 | **Configurable cache** | Stores the JAR under `%LOCALAPPDATA%\synthea-cli` / `$XDG_CACHE_HOME/synthea-cli`; refresh anytime with `--refresh`. |
-| **Friendly flags** | `--state OH`, `--city "Columbus"`, `--output ./data` map to Synthea’s positional arguments and working directory. |
+| **Friendly flags** | `--state OH`, `--city "Columbus"`, `--output ./data`, `--seed 42` map to Synthea’s positional arguments and working directory. |
 | **Portable** | Runs on Windows, macOS, Linux, containers—wherever .NET 8 + Java 17+ are available. |
 | **Docker image** | Multi-stage Dockerfile builds a slim runtime with OpenJDK 17 and publishes the tool. |
 | **Unit-tested** | ≥ 90 % line coverage via xUnit and Coverlet; network & process calls are fully mocked. |
@@ -58,8 +58,8 @@ dotnet tool install --global synthea-cli --version 0.1.0
 ### Run
 
 ```bash
-# Generate 10 synthetic patients from Ohio into ./output
-synthea run --output ./output --population 10 --state OH
+# Generate 10 synthetic patients from Ohio into ./output using a fixed seed
+synthea run --output ./output --population 10 --state OH --seed 12345
 
 # Same, but force-refresh the cached JAR
 synthea --refresh run -o ./output --population 10 --state TX --city Austin
