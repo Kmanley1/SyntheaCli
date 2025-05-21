@@ -52,3 +52,39 @@ flowchart TD
 - Short term: implement structured logging and publish documentation on data retention practices.
 - Medium term: establish an internal artifact mirror for Synthea JARs and update CI scripts accordingly.
 - Long term: evaluate containerized distribution with prepackaged JAR to streamline deployments in isolated networks.
+
+## Codebase Review – 2025
+
+The following observations summarize the current repository structure and quality attributes.
+
+| Area | Strengths | Weaknesses | Risk |
+| --- | --- | --- | --- |
+| Structure | Clear separation of CLI entry point and JAR management. Tests well organized. | Only single project; docs path mismatch. | Low |
+| Design Qualities | Commands validated, modular. Interfaces for process runner enable testing. | Limited extensibility beyond run command. | Medium |
+| Cross-cutting | Simple progress output, caching of JAR. | No structured logging or configuration abstraction. | Medium |
+| Dependencies | Minimal (.NET 8, System.CommandLine beta). JAR download automated. | Reliance on GitHub for JAR; scripts assume Debian. | Medium |
+| Pipeline | setup.sh for CI, tests with high coverage, Docker instructions. | Missing Dockerfile in repo; build scripts may be out of sync. | Low |
+| Documentation | README provides quick start and developer guide; architecture diagram present. | Reference to missing docs/Architecture.md; diagrams minimal. | Medium |
+
+### Findings
+
+1. **Code-base structure** – Single console project with tests. `Program.cs` delegates JAR download to `JarManager`. Tests exercise process and network logic. README outlines layout and architecture diagram.
+2. **Design qualities** – Interfaces decouple process execution. Input validation prevents invalid states. Adding more commands could bloat `Program.cs`.
+3. **Cross-cutting concerns** – JAR caching ensures repeatable runs. No structured logging or retry logic is present.
+4. **Dependency management** – Uses System.CommandLine beta and downloads the Synthea JAR from GitHub at runtime. Scripts target Ubuntu.
+5. **Build & release pipeline** – setup.sh installs prerequisites and publishes the tool. README mentions Docker but no Dockerfile exists.
+6. **Documentation & onboarding** – README covers usage and contribution guidelines, but the architecture link points to the wrong path and diagram detail is minimal.
+
+### Recommendations
+
+Short term actions:
+1. Add structured logging with the Microsoft.Extensions.Logging console provider.
+2. Fix the README link to `docs/deliverables/Architecture.md` and expand the architecture description.
+3. Include a Dockerfile or remove instructions referencing it.
+
+Long term actions:
+1. Introduce configuration abstraction for future commands.
+2. Mirror Synthea JARs internally or bundle with container images.
+3. Refactor `Program.cs` into separate command modules as the feature set grows.
+
+The accompanying `scorecard.json` in the repository root contains machine-readable scores for these categories.
