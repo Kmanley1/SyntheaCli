@@ -83,6 +83,16 @@ internal static class Program
                 r.ErrorMessage = "Population must be a positive integer.";
         });
 
+        var seedOpt = new Option<int?>(
+            aliases: new[] { "--seed", "-s" },
+            description: "Random seed for deterministic output");
+        seedOpt.AddValidator(r =>
+        {
+            if (r.Tokens.Count == 0) return;
+            if (!int.TryParse(r.Tokens[0].Value, out _))
+                r.ErrorMessage = "Random seed must be an integer.";
+        });
+
         // capture *any* additional Synthea flags
         var passthru = new Argument<string[]>("args")
         {
@@ -94,6 +104,7 @@ internal static class Program
         runCmd.AddOption(stateOpt);
         runCmd.AddOption(cityOpt);
         runCmd.AddOption(popOpt);
+        runCmd.AddOption(seedOpt);
         runCmd.AddArgument(passthru);
         // Forward any unrecognized options directly to Synthea
         runCmd.TreatUnmatchedTokensAsErrors = false;
@@ -107,6 +118,7 @@ internal static class Program
             var state     = ctx.ParseResult.GetValueForOption(stateOpt);
             var city      = ctx.ParseResult.GetValueForOption(cityOpt);
             var pop       = ctx.ParseResult.GetValueForOption(popOpt);
+            var seed      = ctx.ParseResult.GetValueForOption(seedOpt);
             var rest      = ctx.ParseResult.GetValueForArgument(passthru);
 
             Directory.CreateDirectory(outDir.FullName);
@@ -126,6 +138,11 @@ internal static class Program
             {
                 argList.Add("-p");
                 argList.Add(pop.Value.ToString());
+            }
+            if (seed.HasValue)
+            {
+                argList.Add("-s");
+                argList.Add(seed.Value.ToString());
             }
             argList.AddRange(rest);
             if (!string.IsNullOrWhiteSpace(state)) argList.Add(state);
