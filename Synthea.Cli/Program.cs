@@ -17,7 +17,7 @@ internal interface IProcessRunner
 internal interface IProcess : IDisposable
 {
     StreamReader StandardOutput { get; }
-    StreamReader StandardError  { get; }
+    StreamReader StandardError { get; }
     Task WaitForExitAsync();
     int ExitCode { get; }
 }
@@ -31,7 +31,7 @@ internal sealed class DefaultProcessRunner : IProcessRunner
         private readonly Process _proc;
         public ProcessWrapper(Process proc) => _proc = proc;
         public StreamReader StandardOutput => _proc.StandardOutput;
-        public StreamReader StandardError  => _proc.StandardError;
+        public StreamReader StandardError => _proc.StandardError;
         public Task WaitForExitAsync() => _proc.WaitForExitAsync();
         public int ExitCode => _proc.ExitCode;
         public void Dispose() => _proc.Dispose();
@@ -161,10 +161,53 @@ internal static class Program
                 r.ErrorMessage = "Random seed must be an integer.";
         });
 
+        var initialSnapOpt = new Option<FileInfo?>("--initial-snapshot", "Path to initial snapshot to load (-i)");
+        initialSnapOpt.AddValidator(r =>
+        {
+            if (r.Tokens.Count == 0) return;
+            if (!File.Exists(r.Tokens[0].Value))
+                r.ErrorMessage = "Initial snapshot file does not exist.";
+        });
+
+        var updatedSnapOpt = new Option<FileInfo?>("--updated-snapshot", "Path where updated snapshot will be written (-u)");
+        updatedSnapOpt.AddValidator(r =>
+        {
+            if (r.Tokens.Count == 0) return;
+            var dir = Path.GetDirectoryName(r.Tokens[0].Value);
+            if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
+                r.ErrorMessage = "Directory for updated snapshot must exist.";
+        });
+
+        var daysForwardOpt = new Option<int?>("--days-forward", "Advance time from snapshot by N days (-t)");
+        daysForwardOpt.AddValidator(r =>
+        {
+            if (r.Tokens.Count == 0) return;
+            if (!int.TryParse(r.Tokens[0].Value, out var v) || v <= 0)
+                r.ErrorMessage = "Days forward must be a positive integer.";
+        });
+
+        var formatOpt = new Option<string[]>("--format", "Output formats to generate (FHIR, CSV, CCDA, BULKFHIR, CPCDS)")
+        {
+            Arity = ArgumentArity.ZeroOrMore
+        };
+        formatOpt.AddValidator(r =>
+        {
+            var allowed = new[] { "fhir", "csv", "ccda", "bulkfhir", "bulk-fhir", "cpcds" };
+            foreach (var t in r.Tokens)
+            {
+                var norm = t.Value.ToLowerInvariant();
+                if (!allowed.Contains(norm))
+                {
+                    r.ErrorMessage = $"Unsupported format '{t.Value}'.";
+                    return;
+                }
+            }
+        });
+
         // capture *any* additional Synthea flags
         var passthru = new Argument<string[]>("args")
         {
-            Arity       = ArgumentArity.ZeroOrMore,
+            Arity = ArgumentArity.ZeroOrMore,
             Description = "Any other arguments forwarded unchanged to synthea.jar"
         };
 
@@ -177,25 +220,33 @@ internal static class Program
         runCmd.AddOption(moduleOpt);
         runCmd.AddOption(popOpt);
         runCmd.AddOption(seedOpt);
+        runCmd.AddOption(initialSnapOpt);
+        runCmd.AddOption(updatedSnapOpt);
+        runCmd.AddOption(daysForwardOpt);
+        runCmd.AddOption(formatOpt);
         runCmd.AddArgument(passthru);
         // Forward any unrecognized options directly to Synthea
         runCmd.TreatUnmatchedTokensAsErrors = false;
 
         runCmd.SetHandler(async (InvocationContext ctx) =>
         {
-            var refresh      = ctx.ParseResult.GetValueForOption(refreshOpt);
-            var javaPathArg  = ctx.ParseResult.GetValueForOption(javaOpt);
-            var javaPath     = !string.IsNullOrWhiteSpace(javaPathArg) ? javaPathArg : "java";
-            var outDir    = ctx.ParseResult.GetValueForOption(outputOpt)!;
-            var state     = ctx.ParseResult.GetValueForOption(stateOpt);
-            var city      = ctx.ParseResult.GetValueForOption(cityOpt);
-            var gender    = ctx.ParseResult.GetValueForOption(genderOpt);
-            var age       = ctx.ParseResult.GetValueForOption(ageOpt);
+            var refresh = ctx.ParseResult.GetValueForOption(refreshOpt);
+            var javaPathArg = ctx.ParseResult.GetValueForOption(javaOpt);
+            var javaPath = !string.IsNullOrWhiteSpace(javaPathArg) ? javaPathArg : "java";
+            var outDir = ctx.ParseResult.GetValueForOption(outputOpt)!;
+            var state = ctx.ParseResult.GetValueForOption(stateOpt);
+            var city = ctx.ParseResult.GetValueForOption(cityOpt);
+            var gender = ctx.ParseResult.GetValueForOption(genderOpt);
+            var age = ctx.ParseResult.GetValueForOption(ageOpt);
             var moduleDir = ctx.ParseResult.GetValueForOption(moduleDirOpt);
-            var modules   = ctx.ParseResult.GetValueForOption(moduleOpt);
-            var pop       = ctx.ParseResult.GetValueForOption(popOpt);
-            var seed      = ctx.ParseResult.GetValueForOption(seedOpt);
-            var rest      = ctx.ParseResult.GetValueForArgument(passthru);
+            var modules = ctx.ParseResult.GetValueForOption(moduleOpt);
+            var pop = ctx.ParseResult.GetValueForOption(popOpt);
+            var seed = ctx.ParseResult.GetValueForOption(seedOpt);
+            var initSnap = ctx.ParseResult.GetValueForOption(initialSnapOpt);
+            var updSnap = ctx.ParseResult.GetValueForOption(updatedSnapOpt);
+            var daysFwd = ctx.ParseResult.GetValueForOption(daysForwardOpt);
+            var formats = ctx.ParseResult.GetValueForOption(formatOpt) ?? Array.Empty<string>();
+            var rest = ctx.ParseResult.GetValueForArgument(passthru);
 
             Directory.CreateDirectory(outDir.FullName);
 
@@ -250,16 +301,48 @@ internal static class Program
                     argList.Add(m);
                 }
             }
+            if (initSnap is not null)
+            {
+                argList.Add("-i");
+                argList.Add(initSnap.FullName);
+            }
+            if (updSnap is not null)
+            {
+                argList.Add("-u");
+                argList.Add(updSnap.FullName);
+            }
+            if (daysFwd.HasValue)
+            {
+                argList.Add("-t");
+                argList.Add(daysFwd.Value.ToString());
+            }
+            if (formats.Length > 0)
+            {
+                var set = new HashSet<string>(formats.Select(f => f.ToLowerInvariant()));
+                var map = new Dictionary<string, string>
+                {
+                    ["fhir"] = "exporter.fhir.export",
+                    ["csv"] = "exporter.csv.export",
+                    ["ccda"] = "exporter.ccda.export",
+                    ["bulkfhir"] = "exporter.fhir.bulk_data",
+                    ["cpcds"] = "exporter.cpcds.export"
+                };
+                foreach (var kv in map)
+                {
+                    var enable = set.Contains(kv.Key) || (kv.Key == "bulkfhir" && (set.Contains("bulk-fhir") || set.Contains("bulkfhir")));
+                    argList.Add("--" + kv.Value + "=" + (enable ? "true" : "false"));
+                }
+            }
             argList.AddRange(rest);
             if (!string.IsNullOrWhiteSpace(state)) argList.Add(state);
-            if (!string.IsNullOrWhiteSpace(city))  argList.Add(city);
+            if (!string.IsNullOrWhiteSpace(city)) argList.Add(city);
 
             var psi = new ProcessStartInfo(javaPath)
             {
-                UseShellExecute        = false,
+                UseShellExecute = false,
                 RedirectStandardOutput = true,
-                RedirectStandardError  = true,
-                WorkingDirectory       = outDir.FullName
+                RedirectStandardError = true,
+                WorkingDirectory = outDir.FullName
             };
             psi.ArgumentList.Add("-jar");
             psi.ArgumentList.Add(jar.FullName);
