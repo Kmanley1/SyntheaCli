@@ -4,6 +4,8 @@
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Diagnostics;
+using System.Collections.Generic;
+using System.IO;
 
 namespace Synthea.Cli;
 
@@ -40,6 +42,12 @@ internal static class Program
 {
     internal static IProcessRunner Runner { get; set; } = new DefaultProcessRunner();
     internal static Func<bool, IProgress<(long, long)>?, CancellationToken, Task<FileInfo>> EnsureJarAsyncFunc { get; set; } = JarManager.EnsureJarAsync;
+    private static readonly HashSet<string> ValidStates = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS",
+        "KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY",
+        "NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"
+    };
     public static async Task<int> Main(string[] args)
     {
         // ───── root command & global options ─────
@@ -68,10 +76,70 @@ internal static class Program
         var stateOpt = new Option<string?>(
             "--state",
             description: "Two-letter state code (e.g. OH, TX). Adds it as positional state arg");
+        stateOpt.AddValidator(r =>
+        {
+            if (r.Tokens.Count == 0) return;
+            var v = r.Tokens[0].Value.ToUpperInvariant();
+            if (v.Length != 2 || !ValidStates.Contains(v))
+                r.ErrorMessage = "State must be a valid two letter code.";
+        });
 
         var cityOpt = new Option<string?>(
             "--city",
             description: "City name (optional second positional arg after state)");
+        cityOpt.AddValidator(r =>
+        {
+            if (r.Tokens.Count == 0) return;
+            if (string.IsNullOrWhiteSpace(r.Tokens[0].Value))
+                r.ErrorMessage = "City name cannot be empty.";
+        });
+
+        var genderOpt = new Option<string?>("--gender", "Patient gender filter (M or F)");
+        genderOpt.AddValidator(r =>
+        {
+            if (r.Tokens.Count == 0) return;
+            var g = r.Tokens[0].Value.ToUpperInvariant();
+            if (g != "M" && g != "F")
+                r.ErrorMessage = "Gender must be 'M' or 'F'.";
+        });
+
+        var ageOpt = new Option<string?>("--age-range", "Age range filter as min-max");
+        ageOpt.AddValidator(r =>
+        {
+            if (r.Tokens.Count == 0) return;
+            var parts = r.Tokens[0].Value.Split('-', 2);
+            if (parts.Length != 2 ||
+                !int.TryParse(parts[0], out var min) ||
+                !int.TryParse(parts[1], out var max) ||
+                min < 0 || max < min)
+            {
+                r.ErrorMessage = "Age range must be 'min-max' with min <= max.";
+            }
+        });
+
+        var moduleDirOpt = new Option<DirectoryInfo?>("--module-dir", "Directory of custom modules");
+        moduleDirOpt.AddValidator(r =>
+        {
+            if (r.Tokens.Count == 0) return;
+            if (!Directory.Exists(r.Tokens[0].Value))
+                r.ErrorMessage = "Module directory does not exist.";
+        });
+
+        var moduleOpt = new Option<string[]>("--module", "Specific disease modules")
+        {
+            Arity = ArgumentArity.ZeroOrMore
+        };
+        moduleOpt.AddValidator(r =>
+        {
+            foreach (var t in r.Tokens)
+            {
+                if (string.IsNullOrWhiteSpace(t.Value))
+                {
+                    r.ErrorMessage = "Module name cannot be empty.";
+                    return;
+                }
+            }
+        });
 
         var popOpt = new Option<int?>(
             aliases: new[] { "--population", "-p" },
@@ -103,6 +171,10 @@ internal static class Program
         runCmd.AddOption(outputOpt);
         runCmd.AddOption(stateOpt);
         runCmd.AddOption(cityOpt);
+        runCmd.AddOption(genderOpt);
+        runCmd.AddOption(ageOpt);
+        runCmd.AddOption(moduleDirOpt);
+        runCmd.AddOption(moduleOpt);
         runCmd.AddOption(popOpt);
         runCmd.AddOption(seedOpt);
         runCmd.AddArgument(passthru);
@@ -117,11 +189,22 @@ internal static class Program
             var outDir    = ctx.ParseResult.GetValueForOption(outputOpt)!;
             var state     = ctx.ParseResult.GetValueForOption(stateOpt);
             var city      = ctx.ParseResult.GetValueForOption(cityOpt);
+            var gender    = ctx.ParseResult.GetValueForOption(genderOpt);
+            var age       = ctx.ParseResult.GetValueForOption(ageOpt);
+            var moduleDir = ctx.ParseResult.GetValueForOption(moduleDirOpt);
+            var modules   = ctx.ParseResult.GetValueForOption(moduleOpt);
             var pop       = ctx.ParseResult.GetValueForOption(popOpt);
             var seed      = ctx.ParseResult.GetValueForOption(seedOpt);
             var rest      = ctx.ParseResult.GetValueForArgument(passthru);
 
             Directory.CreateDirectory(outDir.FullName);
+
+            if (!string.IsNullOrWhiteSpace(city) && string.IsNullOrWhiteSpace(state))
+            {
+                Console.Error.WriteLine("--city requires --state to be specified.");
+                ctx.ExitCode = 1;
+                return;
+            }
 
             // download or reuse JAR
             var jar = await EnsureJarAsyncFunc(
@@ -143,6 +226,29 @@ internal static class Program
             {
                 argList.Add("-s");
                 argList.Add(seed.Value.ToString());
+            }
+            if (!string.IsNullOrWhiteSpace(gender))
+            {
+                argList.Add("--gender");
+                argList.Add(gender.ToUpperInvariant());
+            }
+            if (!string.IsNullOrWhiteSpace(age))
+            {
+                argList.Add("--age-range");
+                argList.Add(age);
+            }
+            if (moduleDir is not null)
+            {
+                argList.Add("--module-dir");
+                argList.Add(moduleDir.FullName);
+            }
+            if (modules is not null)
+            {
+                foreach (var m in modules)
+                {
+                    argList.Add("--module");
+                    argList.Add(m);
+                }
             }
             argList.AddRange(rest);
             if (!string.IsNullOrWhiteSpace(state)) argList.Add(state);
