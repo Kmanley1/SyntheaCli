@@ -22,3 +22,5 @@ The Synthea JAR itself is not included here. At a high level, Synthea is a Java 
 
 
 The CLI simply launches this JAR with user-supplied arguments to control the simulation size, output location, and other options.
+
+[Download this file](./Architecture.md)
