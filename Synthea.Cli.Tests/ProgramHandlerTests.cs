@@ -241,6 +241,62 @@ public class ProgramHandlerTests : IDisposable
         Assert.NotEqual(0, code);
     }
 
+    [Fact]
+    public async Task ConfigArgument_ValidFile()
+    {
+        var cfg = Path.Combine(_tempDir, "config.json");
+        File.WriteAllText(cfg, "{}");
+        var outDir = Path.Combine(_tempDir, "out21");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "--config", cfg });
+        Assert.Equal(0, code);
+        var list = _runner.StartInfo!.ArgumentList;
+        Assert.Contains("-c", list);
+        Assert.Contains(cfg, list);
+    }
+
+    [Fact]
+    public async Task ConfigArgument_InvalidFile()
+    {
+        var outDir = Path.Combine(_tempDir, "out22");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "--config", Path.Combine(_tempDir, "missing.json") });
+        Assert.NotEqual(0, code);
+    }
+
+    [Fact]
+    public async Task ZipArgument_ValidZip()
+    {
+        var outDir = Path.Combine(_tempDir, "out23");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "--state", "OH", "--zip", "44101" });
+        Assert.Equal(0, code);
+        var list = _runner.StartInfo!.ArgumentList;
+        Assert.Equal(new[] { "-jar", _jar.FullName, "OH", "44101" }, list);
+    }
+
+    [Fact]
+    public async Task ZipArgument_InvalidZip()
+    {
+        var outDir = Path.Combine(_tempDir, "out24");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "--state", "OH", "--zip", "bad" });
+        Assert.NotEqual(0, code);
+    }
+
+    [Fact]
+    public async Task FhirVersionArgument_Valid()
+    {
+        var outDir = Path.Combine(_tempDir, "out25");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "--fhir-version", "R4" });
+        Assert.Equal(0, code);
+        Assert.Contains("--exporter.fhir.version=R4", _runner.StartInfo!.ArgumentList);
+    }
+
+    [Fact]
+    public async Task FhirVersionArgument_Invalid()
+    {
+        var outDir = Path.Combine(_tempDir, "out26");
+        var code = await Program.Main(new[] { "run", "--output", outDir, "--fhir-version", "XYZ" });
+        Assert.NotEqual(0, code);
+    }
+
     private class CapturingRunner : IProcessRunner
     {
         public ProcessStartInfo? StartInfo;

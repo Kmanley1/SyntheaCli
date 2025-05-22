@@ -6,6 +6,7 @@ using System.CommandLine.Invocation;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.RegularExpressions;
 
 namespace Synthea.Cli;
 
@@ -161,6 +162,32 @@ internal static class Program
                 r.ErrorMessage = "Random seed must be an integer.";
         });
 
+        var configOpt = new Option<FileInfo?>(aliases: new[] { "--config", "-c" },
+            description: "Path to Synthea configuration file");
+        configOpt.AddValidator(r =>
+        {
+            if (r.Tokens.Count == 0) return;
+            if (!File.Exists(r.Tokens[0].Value))
+                r.ErrorMessage = "Configuration file does not exist.";
+        });
+
+        var zipOpt = new Option<string?>("--zip", "ZIP code (requires --state)");
+        zipOpt.AddValidator(r =>
+        {
+            if (r.Tokens.Count == 0) return;
+            if (!Regex.IsMatch(r.Tokens[0].Value, @"^\d{5}(?:-\d{4})?$"))
+                r.ErrorMessage = "ZIP code must be 5 digits or 5+4.";
+        });
+
+        var fhirVerOpt = new Option<string?>("--fhir-version", "FHIR version (R4 or STU3)");
+        fhirVerOpt.AddValidator(r =>
+        {
+            if (r.Tokens.Count == 0) return;
+            var v = r.Tokens[0].Value.ToUpperInvariant();
+            if (v != "R4" && v != "STU3")
+                r.ErrorMessage = "FHIR version must be R4 or STU3.";
+        });
+
         var initialSnapOpt = new Option<FileInfo?>("--initial-snapshot", "Path to initial snapshot to load (-i)");
         initialSnapOpt.AddValidator(r =>
         {
@@ -220,6 +247,9 @@ internal static class Program
         runCmd.AddOption(moduleOpt);
         runCmd.AddOption(popOpt);
         runCmd.AddOption(seedOpt);
+        runCmd.AddOption(configOpt);
+        runCmd.AddOption(zipOpt);
+        runCmd.AddOption(fhirVerOpt);
         runCmd.AddOption(initialSnapOpt);
         runCmd.AddOption(updatedSnapOpt);
         runCmd.AddOption(daysForwardOpt);
@@ -242,6 +272,9 @@ internal static class Program
             var modules = ctx.ParseResult.GetValueForOption(moduleOpt);
             var pop = ctx.ParseResult.GetValueForOption(popOpt);
             var seed = ctx.ParseResult.GetValueForOption(seedOpt);
+            var config = ctx.ParseResult.GetValueForOption(configOpt);
+            var zip = ctx.ParseResult.GetValueForOption(zipOpt);
+            var fhirVer = ctx.ParseResult.GetValueForOption(fhirVerOpt);
             var initSnap = ctx.ParseResult.GetValueForOption(initialSnapOpt);
             var updSnap = ctx.ParseResult.GetValueForOption(updatedSnapOpt);
             var daysFwd = ctx.ParseResult.GetValueForOption(daysForwardOpt);
@@ -253,6 +286,12 @@ internal static class Program
             if (!string.IsNullOrWhiteSpace(city) && string.IsNullOrWhiteSpace(state))
             {
                 Console.Error.WriteLine("--city requires --state to be specified.");
+                ctx.ExitCode = 1;
+                return;
+            }
+            if (!string.IsNullOrWhiteSpace(zip) && string.IsNullOrWhiteSpace(state))
+            {
+                Console.Error.WriteLine("--zip requires --state to be specified.");
                 ctx.ExitCode = 1;
                 return;
             }
@@ -277,6 +316,11 @@ internal static class Program
             {
                 argList.Add("-s");
                 argList.Add(seed.Value.ToString());
+            }
+            if (config is not null)
+            {
+                argList.Add("-c");
+                argList.Add(config.FullName);
             }
             if (!string.IsNullOrWhiteSpace(gender))
             {
@@ -316,6 +360,10 @@ internal static class Program
                 argList.Add("-t");
                 argList.Add(daysFwd.Value.ToString());
             }
+            if (!string.IsNullOrWhiteSpace(fhirVer))
+            {
+                argList.Add("--exporter.fhir.version=" + fhirVer.ToUpperInvariant());
+            }
             if (formats.Length > 0)
             {
                 var set = new HashSet<string>(formats.Select(f => f.ToLowerInvariant()));
@@ -336,6 +384,7 @@ internal static class Program
             argList.AddRange(rest);
             if (!string.IsNullOrWhiteSpace(state)) argList.Add(state);
             if (!string.IsNullOrWhiteSpace(city)) argList.Add(city);
+            if (!string.IsNullOrWhiteSpace(zip)) argList.Add(zip);
 
             var psi = new ProcessStartInfo(javaPath)
             {
