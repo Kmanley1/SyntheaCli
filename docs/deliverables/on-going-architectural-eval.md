@@ -88,3 +88,5 @@ Long term actions:
 3. Refactor `Program.cs` into separate command modules as the feature set grows.
 
 The accompanying `scorecard.json` in the repository root contains machine-readable scores for these categories.
+
+[Download this file](./on-going-architectural-eval.md)
