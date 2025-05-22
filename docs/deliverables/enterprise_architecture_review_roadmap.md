@@ -50,3 +50,4 @@ Perform an enterprise architecture review and update the `on-going-architectural
 ## 📌 Notes
 - Ensure clear language, suitable for technical and non-technical stakeholders.
 - Align recommendations with strategic business priorities and feasibility.
+[Download this file](./enterprise_architecture_review_roadmap.md)
