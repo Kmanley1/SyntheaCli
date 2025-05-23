@@ -37,13 +37,13 @@ public class ProgramRefactorTests
         Assert.Contains("-s", list);
         Assert.Contains("77", list);
         Assert.Contains("-c", list);
-        Assert.Contains("/cfg", list);
+        Assert.Contains(Path.GetFullPath("/cfg"), list);
         Assert.Contains("--gender", list);
         Assert.Contains("M", list);
         Assert.Contains("--age-range", list);
         Assert.Contains("10-20", list);
         Assert.Contains("--module-dir", list);
-        Assert.Contains("/mods", list);
+        Assert.Contains(Path.GetFullPath("/mods"), list);
         Assert.Contains("--module", list);
         Assert.Contains("flu", list);
         Assert.Contains("--exporter.fhir.version=R4", list);
@@ -57,8 +57,9 @@ public class ProgramRefactorTests
     [Fact]
     public void CreateProcessStartInfo_UsesWorkingDirectoryAndJar()
     {
+        var tmpDir = Path.Combine(Path.GetTempPath(), "synthea-test-tmp");
         var opts = new Program.RunOptions(
-            Output: new DirectoryInfo("/tmp"),
+            Output: new DirectoryInfo(tmpDir),
             Refresh: false,
             JavaPath: "customjava",
             State: null,
@@ -78,12 +79,12 @@ public class ProgramRefactorTests
             Formats: System.Array.Empty<string>(),
             Passthru: System.Array.Empty<string>());
 
-        var jar = new FileInfo("/synthea.jar");
+        var jar = new FileInfo(Path.Combine(tmpDir, "synthea.jar"));
         var psi = Program.CreateProcessStartInfo(opts, jar);
         Assert.Equal("customjava", psi.FileName);
-        Assert.Equal("/tmp", psi.WorkingDirectory);
+        Assert.Equal(tmpDir, psi.WorkingDirectory);
         Assert.Contains("-jar", psi.ArgumentList);
-        Assert.Contains("/synthea.jar", psi.ArgumentList);
+        Assert.Contains(jar.FullName, psi.ArgumentList);
     }
 }
 
