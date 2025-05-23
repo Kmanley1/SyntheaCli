@@ -1,6 +1,6 @@
 .\nuget-helper.ps1           # packs, installs fresh build
 .\nuget-helper.ps1 -Install  # uninstall & pull latest from NuGet.org
-.\nuget-helper.ps1 -Version 0.1.0 -Install  # install specific published version
+.\nuget-helper.ps1 -Version 0.2.0 -Install  # install specific published version
 
 
 <#
@@ -25,7 +25,7 @@
 
 .EXAMPLE
     # install a particular published version
-    .\nuget-helper.ps1 -Install -Version 0.1.0
+    .\nuget-helper.ps1 -Install -Version 0.2.0
 #>
 
 param (

@@ -52,7 +52,7 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
 ### Install as a global tool
 
 ```bash
-dotnet tool install --global synthea-cli --version 0.1.0
+dotnet tool install --global synthea-cli --version 0.2.0
 ```
 
 ### Run
