@@ -17,4 +17,3 @@ This document outlines the concrete steps for improving the `synthea-cli` projec
 - **Containerized Distribution** – Provide an optional Docker image with the JAR pre‑downloaded to support offline or restricted networks.
 - **Configuration Abstraction** – Introduce configuration files or environment variables for future expansion beyond the current `run` command.
 
-[Download this file](./action_plan_with_timelines.md)
