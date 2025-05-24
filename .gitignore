@@ -343,4 +343,6 @@ intl-cache/
 
 # End of Visual Studio Code
 
+# Project-specific files
 synthea-output/*
+docs/reference/Patterns_of_Enterprise_Application_Architecture.pdf
