@@ -346,3 +346,4 @@ intl-cache/
 # Project-specific files
 synthea-output/*
 docs/reference/Patterns_of_Enterprise_Application_Architecture.pdf
+docs/reference/Optimizing_Microsoft_Azure_Workloads.pdf
