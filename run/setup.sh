@@ -18,8 +18,12 @@ if [ ${#packages[@]} -ne 0 ]; then
     sudo rm -rf /var/lib/apt/lists/*
 fi
 
-# 2) Restore & publish the CLI
-dotnet restore --nologo
+
+# 2) Restore & build the entire solution (ensures all test dependencies are present)
+dotnet restore --nologo Synthea.Cli.sln
+dotnet build --nologo --configuration Release Synthea.Cli.sln
+
+# 3) Publish the CLI
 dotnet publish Synthea.Cli/Synthea.Cli.csproj -c Release -o /workspace/synthea-cli/bin
 
 echo "✅ synthea-cli built; run it with:"
