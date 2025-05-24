@@ -7,6 +7,8 @@
 
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <RootNamespace>Synthea.Cli.UnitTests</RootNamespace>
+    <AssemblyName>Synthea.Cli.UnitTests</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Synthea.Cli\Synthea.Cli.csproj" />
+    <ProjectReference Include="..\..\Synthea.Cli\Synthea.Cli.csproj" />
   </ItemGroup>
 
 </Project>

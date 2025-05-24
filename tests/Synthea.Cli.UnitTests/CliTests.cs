@@ -2,7 +2,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace Synthea.Cli.Tests;
+namespace Synthea.Cli.UnitTests;
 
 public class CliTests
 {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Synthea.Cli;
 using Xunit;
 
-namespace Synthea.Cli.Tests;
+namespace Synthea.Cli.UnitTests;
 
 public class ProgramRefactorTests
 {

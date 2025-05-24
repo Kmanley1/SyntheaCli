@@ -11,12 +11,12 @@ using System.Linq;
 
 namespace Synthea.Cli;
 
-internal interface IProcessRunner
+public interface IProcessRunner
 {
     IProcess Start(ProcessStartInfo psi);
 }
 
-internal interface IProcess : IDisposable
+public interface IProcess : IDisposable
 {
     StreamReader StandardOutput { get; }
     StreamReader StandardError { get; }
@@ -24,7 +24,7 @@ internal interface IProcess : IDisposable
     int ExitCode { get; }
 }
 
-internal sealed class DefaultProcessRunner : IProcessRunner
+public sealed class DefaultProcessRunner : IProcessRunner
 {
     public IProcess Start(ProcessStartInfo psi) => new ProcessWrapper(Process.Start(psi)!);
 
@@ -40,10 +40,10 @@ internal sealed class DefaultProcessRunner : IProcessRunner
     }
 }
 
-internal static class Program
+public static class Program
 {
-    internal static IProcessRunner Runner { get; set; } = new DefaultProcessRunner();
-    internal static Func<bool, IProgress<(long, long)>?, CancellationToken, Task<FileInfo>> EnsureJarAsyncFunc { get; set; } = JarManager.EnsureJarAsync;
+    public static IProcessRunner Runner { get; set; } = new DefaultProcessRunner();
+    public static Func<bool, IProgress<(long, long)>?, CancellationToken, Task<FileInfo>> EnsureJarAsyncFunc { get; set; } = JarManager.EnsureJarAsync;
     private static readonly HashSet<string> ValidStates = new(StringComparer.OrdinalIgnoreCase)
     {
         "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS",

@@ -4,7 +4,7 @@ using Xunit;
 using System.Collections.Generic;
 using Synthea.Cli;
 
-namespace Synthea.Cli.Tests;
+namespace Synthea.Cli.UnitTests;
 
 public class CodexTaskProcessorTests : IDisposable
 {

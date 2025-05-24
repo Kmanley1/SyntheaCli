@@ -145,11 +145,11 @@ synthea-cli/
 │   ├─ Program.cs                # System.CommandLine entry point
 │   ├─ JarManager.cs             # JAR download & cache helper
 │   └─ Synthea.Cli.csproj
-├─ Synthea.Cli.Tests/            # unit tests (xUnit)
+├─ Synthea.Cli.UnitTests/            # unit tests (xUnit)
 │   ├─ CliTests.cs
 │   ├─ JarManagerTests.cs
 │   ├─ ProgramHandlerTests.cs
-│   └─ Synthea.Cli.Tests.csproj
+│   └─ Synthea.Cli.UnitTests.csproj
 └─ synthea-output/               # default data output (git-ignored)
 ```
 

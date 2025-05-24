@@ -1,7 +1,7 @@
 $RootDir         = "C:\_Template\Projects\_code\synthea-cli"
 $SolutionName    = "Synthea.Cli"              
 $ProjectName     = "Synthea.Cli"
-$TestProjectName = "Synthea.Cli.Tests"
+$TestProjectName = "Synthea.Cli.UnitTests"
 
 #mkdir $RootDir; 
 Set-Location $RootDir

@@ -7,7 +7,7 @@ using System.Text.Json;
 
 namespace Synthea.Cli;
 
-internal static class JarManager
+public static class JarManager
 {
     private const string Repo    = "synthetichealth/synthea";
     private const string JarHint = "with-dependencies.jar";   // asset we want

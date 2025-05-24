@@ -29,7 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="Synthea.Cli.Tests" />
+    <InternalsVisibleTo Include="Synthea.Cli.UnitTests" />
   </ItemGroup>
 
 </Project>
