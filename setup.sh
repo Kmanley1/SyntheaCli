@@ -11,6 +11,10 @@ fi
 if ! command -v dotnet >/dev/null; then
     packages+=(dotnet-sdk-8.0)
 fi
+# Some tests rely on the standard zip utilities
+if ! command -v zip >/dev/null; then
+    packages+=(zip unzip)
+fi
 if [ ${#packages[@]} -ne 0 ]; then
     sudo apt-get update -qq
     sudo apt-get install -y --no-install-recommends "${packages[@]}"
