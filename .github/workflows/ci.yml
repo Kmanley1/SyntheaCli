@@ -1,0 +1,17 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup
+        run: ./setup.sh
+      - name: Run Unit Tests
+        run: dotnet test --filter Category!=Integration
+      - name: Run Integration Tests
+        run: dotnet test --filter Category=Integration
