@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 
 namespace Synthea.Cli;
 
@@ -27,7 +28,27 @@ public static class CodexTaskProcessor
         Directory.CreateDirectory(sourceDir);
         Directory.CreateDirectory(targetDir);
 
-        foreach (var file in Directory.EnumerateFiles(sourceDir, "*.md"))
+        var contextDir = Path.Combine(sourceDir, "context");
+        if (!Directory.Exists(contextDir))
+        {
+            throw new DirectoryNotFoundException($"Context directory not found: {contextDir}");
+        }
+
+        foreach (var file in Directory.EnumerateFiles(contextDir, "*.md").OrderBy(f => f))
+        {
+            var name = Path.GetFileName(file);
+            try
+            {
+                Console.WriteLine($"Processing context task: {name}");
+                implementer.ImplementTask(file);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error processing {name}: {ex.Message}");
+            }
+        }
+
+        foreach (var file in Directory.EnumerateFiles(sourceDir, "*.md", SearchOption.TopDirectoryOnly).OrderBy(f => f))
         {
             var name = Path.GetFileName(file);
             try
