@@ -12,4 +12,12 @@ Pre- and post-task directories must exist. If either is missing, the automation 
 
 Files anywhere under `tasks/context` are never moved to `tasks/implemented`.
 
+When a task is successfully implemented, its markdown file is renamed with the UTC start time of that task:
+
+```
+YYYY-MM-DD_HH-MM-SS-original-name.md
+```
+
+The renamed file is then moved into `tasks/implemented/`. If a file already starts with that timestamp pattern it is left unchanged so rerunning the automation is safe.
+
 Use `CodexTaskProcessor.ProcessTasks` to run the automation. Pass `--dry-run` to print the execution order without performing moves.
