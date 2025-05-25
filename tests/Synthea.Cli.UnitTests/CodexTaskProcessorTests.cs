@@ -135,6 +135,27 @@ public class CodexTaskProcessorTests : IDisposable
         Assert.Single(Directory.GetFiles(_dest));
     }
 
+    [Fact]
+    public void CreatesStagedArtefactsAndPointers()
+    {
+        var file = Path.Combine(_src, "task.md");
+        File.WriteAllText(file, "t");
+
+        var impl = new LoggingImplementer();
+        CodexTaskProcessor.ProcessTasks(_src, _dest, impl);
+
+        var implemented = Directory.GetFiles(_dest).Single();
+        var content = File.ReadAllText(implemented);
+        Assert.Contains("## Post‑run Artefacts", content);
+
+        var stagedDir = Path.Combine(_src, "staged");
+        var logFile = Directory.GetFiles(stagedDir, "*-log.md").Single();
+        var fbFile = Directory.GetFiles(stagedDir, "*-feedback.md").Single();
+
+        Assert.Contains(Path.GetFileName(logFile), content);
+        Assert.Contains(Path.GetFileName(fbFile), content);
+    }
+
     private class StubImplementer : ITaskImplementer
     {
         private readonly bool _success;
@@ -145,6 +166,18 @@ public class CodexTaskProcessorTests : IDisposable
         {
             Implemented.Add(filePath);
             return _success;
+        }
+    }
+
+    private class LoggingImplementer : ITaskImplementer
+    {
+        public bool IsTaskCompleted(string _) => false;
+        public bool ImplementTask(string _)
+        {
+            Console.WriteLine("info line");
+            Console.Error.WriteLine("WARN something");
+            Console.Error.WriteLine("ERROR bad");
+            return true;
         }
     }
 }
