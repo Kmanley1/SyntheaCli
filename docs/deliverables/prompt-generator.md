@@ -1,4 +1,10 @@
 
+Use attached 'codex-task-template-prompt.md' as a template to write a codex prompt that instructs codex to remember prompts\codex-task-template-automation.md task that codex wrote. Ask codex to analyze the codex automation solution to determine why it is not working. The last task, codex-prompt-sync-automation-doc.md was not moved to implemented folder
+
+Povide a download link to the prompt in a markdown file named using kebab-case
+
+---
+
 Use attached 'codex-task-template-prompt.md' as a template to write a codex prompt that instructs codex to remember prompts\codex-task-template-automation.md task that codex wrote and ask codex to update so that any files in tasks\context\pre are always run first for each task in \tasks directory and tasks in tasks\context\post are always run last for each task in \tasks directory and that files in tasks\context are never moved to tasks\implemented.
 
 Provide a download link to the prompt in a markdown file named using kebab-case
