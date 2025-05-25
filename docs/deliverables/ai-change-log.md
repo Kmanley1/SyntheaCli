@@ -27,6 +27,15 @@ This log records every automated task completed by Codex/GitHub Copilot or other
 
 <!-- New entries must be inserted directly below this line -->
 
+### Task Name: Verify synthea run integration
+**Date:** 2025-05-25
+**Author:** Codex-Automation
+**Summary:** Added integration test and README instructions (commit d3d8047).
+**Acceptance Criteria:**
+- [x] Test project runs `synthea run` and checks output
+- [x] README explains how to run integration tests
+---
+
 ### Task Name: Prefix implemented tasks with start timestamp
 **Date:** 2025-05-25
 **Author:** Codex-Automation
