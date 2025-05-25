@@ -25,6 +25,24 @@ This log records every automated task completed by Codex/GitHub Copilot or other
 
 ## Task Entries
 <!-- New entries must be inserted directly below this line -->
+### Task Name: Prefix implemented tasks with start timestamp
+**Date:** 2025-05-25
+**Author:** Codex-Automation
+**Summary:** Updated automation to prepend UTC timestamps when moving task files, ensuring idempotency (commit 9661577).
+**Acceptance Criteria:**
+- [x] Timestamp prefix added on move
+- [x] Context files remain in place
+---
+
+### Task Name: Move tasks to implemented after execution
+**Date:** 2025-05-25
+**Author:** Codex-Automation
+**Summary:** Fixed missing context directories causing tasks to stay in `tasks/`; automation now creates them and moves completed tasks (commit e16a636).
+**Acceptance Criteria:**
+- [x] Tasks archived on success
+- [x] Automation handles absent context folders
+---
+
 
 ### Task Name: Sync automation docs with code
 **Date:** 2025-05-25
