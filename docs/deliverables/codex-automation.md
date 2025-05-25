@@ -10,6 +10,7 @@ The Codex automation processes tasks under `docs/tasks`. For each normal task fi
 
 The automation ensures the context directories exist. If either `tasks/context/pre/` or
 `tasks/context/post/` is missing, it is automatically created so processing can continue.
+All context and task files are processed in alphanumeric order for deterministic results.
 
 Files anywhere under `tasks/context` are never moved to `tasks/implemented`.
 
@@ -21,4 +22,4 @@ YYYY-MM-DD_HH-MM-SS-original-name.md
 
 The renamed file is then moved into `tasks/implemented/`. If a file already starts with that timestamp pattern it is left unchanged so rerunning the automation is safe.
 
-Use `CodexTaskProcessor.ProcessTasks` to run the automation. Pass `--dry-run` to print the execution order without performing moves.
+Use `CodexTaskProcessor.ProcessTasks` to run the automation.
