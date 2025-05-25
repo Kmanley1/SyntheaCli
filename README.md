@@ -131,7 +131,7 @@ in `tasks/context/pre/` run before each normal task, while post-task files in
 never moved. Only non-context tasks are moved to `tasks/implemented` after
 successful completion.
 
-See [docs/automation.md](docs/automation.md) for more details.
+See [docs/deliverables/codex-automation.md](docs/deliverables/codex-automation.md) for more details.
 
 ---
 

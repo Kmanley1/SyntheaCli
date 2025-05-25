@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace Synthea.Cli;
 
@@ -49,6 +50,7 @@ public static class CodexTaskProcessor
 
         foreach (var file in Directory.EnumerateFiles(sourceDir, "*.md", SearchOption.TopDirectoryOnly).OrderBy(f => f))
         {
+            var startUtc = DateTime.UtcNow;
             var name = Path.GetFileName(file);
 
             var preFiles = Directory.Exists(preDir)
@@ -77,9 +79,15 @@ public static class CodexTaskProcessor
                 }
                 else if (implementer.ImplementTask(file))
                 {
-                    var dest = Path.Combine(targetDir, name);
+                    var prefix = startUtc.ToString("yyyy-MM-dd_HH-mm-ss");
+                    var destName = name;
+                    if (!Regex.IsMatch(name, "^\\d{4}-\\d{2}-\\d{2}_\\d{2}-\\d{2}-\\d{2}-"))
+                    {
+                        destName = $"{prefix}-{name}";
+                    }
+                    var dest = Path.Combine(targetDir, destName);
                     File.Move(file, dest, overwrite: true);
-                    Console.WriteLine($"Task completed and file moved: {name}");
+                    Console.WriteLine($"Task completed and file moved: {destName}");
                 }
                 else
                 {

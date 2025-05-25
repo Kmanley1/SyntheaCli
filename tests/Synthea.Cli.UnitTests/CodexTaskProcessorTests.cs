@@ -3,6 +3,8 @@ using System.IO;
 using Xunit;
 using System.Collections.Generic;
 using Synthea.Cli;
+using System.Text.RegularExpressions;
+using System.Linq;
 
 namespace Synthea.Cli.UnitTests;
 
@@ -42,7 +44,8 @@ public class CodexTaskProcessorTests : IDisposable
         CodexTaskProcessor.ProcessTasks(_src, _dest, impl);
 
         Assert.False(File.Exists(file));
-        Assert.True(File.Exists(Path.Combine(_dest, "task1.md")));
+        var moved = Directory.GetFiles(_dest).Single();
+        Assert.Matches("^\\d{4}-\\d{2}-\\d{2}_\\d{2}-\\d{2}-\\d{2}-task1\\.md$", Path.GetFileName(moved));
         Assert.Equal(new[] { file }, impl.Implemented);
     }
 
@@ -56,7 +59,7 @@ public class CodexTaskProcessorTests : IDisposable
         CodexTaskProcessor.ProcessTasks(_src, _dest, impl);
 
         Assert.True(File.Exists(file));
-        Assert.False(File.Exists(Path.Combine(_dest, "task2.md")));
+        Assert.Empty(Directory.GetFiles(_dest));
     }
 
     [Fact]
@@ -73,7 +76,8 @@ public class CodexTaskProcessorTests : IDisposable
         CodexTaskProcessor.ProcessTasks(_src, _dest, impl);
 
         Assert.Equal(new[] { preFile, taskFile, postFile }, impl.Implemented);
-        Assert.True(File.Exists(Path.Combine(_dest, "task.md")));
+        var moved = Directory.GetFiles(_dest).Single();
+        Assert.Matches("^\\d{4}-\\d{2}-\\d{2}_\\d{2}-\\d{2}-\\d{2}-task\\.md$", Path.GetFileName(moved));
     }
 
     [Fact]
@@ -91,6 +95,7 @@ public class CodexTaskProcessorTests : IDisposable
         Assert.True(File.Exists(postFile));
         Assert.False(File.Exists(Path.Combine(_dest, "a.md")));
         Assert.False(File.Exists(Path.Combine(_dest, "b.md")));
+        Assert.Empty(Directory.GetFiles(_dest));
     }
 
     [Fact]
@@ -109,6 +114,24 @@ public class CodexTaskProcessorTests : IDisposable
         var ex = Assert.Throws<DirectoryNotFoundException>(() =>
             CodexTaskProcessor.ProcessTasks(_src, _dest, new StubImplementer(true)));
         Assert.Contains("Post-task directory", ex.Message);
+    }
+
+    [Fact]
+    public void DoesNotPrefixAlreadyTimestampedFile()
+    {
+        var name = "2025-01-01_00-00-00-task.md";
+        var file = Path.Combine(_src, name);
+        File.WriteAllText(file, "t");
+
+        var impl = new StubImplementer(success: true);
+        CodexTaskProcessor.ProcessTasks(_src, _dest, impl);
+
+        Assert.True(File.Exists(Path.Combine(_dest, name)));
+        Assert.Empty(Directory.GetFiles(_src));
+
+        // second run should not modify the file
+        CodexTaskProcessor.ProcessTasks(_src, _dest, impl);
+        Assert.Single(Directory.GetFiles(_dest));
     }
 
     private class StubImplementer : ITaskImplementer
