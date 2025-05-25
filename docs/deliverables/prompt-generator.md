@@ -1,4 +1,13 @@
 
+Use attached 'codex-task-template-prompt.md' as a template to write a codex prompt that instructs codex to write an integration test that uses the actual synthea-cli wrapper to run this command:
+
+# Generate 1 synthetic patient in the "output" directory
+synthea run --output ./output --population 1
+
+Povide a download link to the prompt in a markdown file named using kebab-case
+
+---
+
 Use attached 'codex-task-template-prompt.md' as a template to write a codex prompt that instructs codex to remember prompts\codex-task-template-automation.md task that codex wrote. Ask codex to analyze the codex automation solution to determine why it is not working. The last task, codex-prompt-sync-automation-doc.md was not moved to implemented folder
 
 Povide a download link to the prompt in a markdown file named using kebab-case

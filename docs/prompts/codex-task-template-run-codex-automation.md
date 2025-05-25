@@ -1,9 +1,9 @@
-# Codex Task: Run Automate Task Processing, Context Execution, and Timestamped Archiving for **Synthea CLI** Codex Tasks
+# Codex Task: Run Automated Task Processing, Context Execution, and Timestamped Archiving for **Synthea CLI** Codex Tasks
 
 ---
 
 ## Objective
-Fully automate the workflow for all Codex Markdown task files in `docs\tasks\`. Iterate through a folder with codex tasks and evaluate if the task has been completed, then implement each task sequentially, then rename and move the markdown file, if it is in the \tasks directory and not the \tasks\context sub-directory
+Use the automated workflow documented in deliverables\codex-automation.md for all Codex Markdown task files in `docs\tasks\`. Iterate through a folder with codex tasks and evaluate if the task has been completed, then implement each task sequentially, then rename and move the markdown file, if it is in the \tasks directory and not the \tasks\context sub-directory.
 
 For **every** normal task, the automation must:
 
