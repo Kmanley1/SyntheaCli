@@ -9,7 +9,7 @@ Iterate through a folder with codex tasks
 \synthea-cli\docs\tasks
 ```
 
-Evaluate if the task has been completed, then implement each task sequentially, then move the markdown file upon completion to:
+Evaluate if the task has been completed, then implement each task sequentially, then move the markdown file, if it is in the \tasks directory and not the \tasks\context sub-directory, upon completion to:
 
 ```
 \synthea-cli\docs\tasks

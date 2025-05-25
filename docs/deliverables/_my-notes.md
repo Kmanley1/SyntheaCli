@@ -38,4 +38,3 @@ codex-task-update-health-check.md         --> health-check.md
 codex-task-update-roadmap.md              --> roadmap.md
 
 
-Use attached codex-task-template-prompt.md as a template to write a codex prompt that instructs codex to use 'prompts\codex-task-template-ai-change-log.md' as a template to write the tasks it performs into the file 'deliverables\ai-change-log.md'
