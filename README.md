@@ -141,7 +141,8 @@ Execute all integration tests with:
 dotnet test --filter Category=Integration
 ```
 
-This builds the CLI and runs cross-platform tests including `SyntheaRunTests`.
+This builds the CLI and runs cross-platform tests including `SyntheaRunTests`
+and `SyntheaCliWrapperRunTests`.
 
 ---
 
