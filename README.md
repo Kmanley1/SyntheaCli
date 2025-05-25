@@ -22,6 +22,7 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
     - [Docker](#docker)
     - [`setup.sh` for CI / Codex](#setupsh-for-ci--codex)
       - [GitHub Actions example](#github-actions-example)
+    - [Context Tasks](#context-tasks)
   - [Project Layout](#project-layout)
   - [Contributing](#contributing)
   - [License \& Credits](#license--credits)
@@ -114,12 +115,19 @@ docker run --rm -v "$PWD/out":/data synthea-cli            -- --state CA --popul
 
 #### GitHub Actions example
 
+
 ```yaml
 steps:
   - uses: actions/checkout@v4
   - run: ./setup.sh
   - run: dotnet /workspace/synthea-cli/bin/Synthea.Cli.dll -- --help
 ```
+
+### Context Tasks
+
+Task automation uses a `tasks/context` folder for reusable setup snippets. These
+files execute before every task run and stay in place. Only non-context tasks are
+moved to `tasks/implemented` after successful completion.
 
 ---
 
