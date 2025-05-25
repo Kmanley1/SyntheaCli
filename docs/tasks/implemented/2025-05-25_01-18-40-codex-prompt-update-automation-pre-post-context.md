@@ -17,11 +17,11 @@ tasks\context\post\  # must run *after* every normal task
 ---
 
 **Task/Goal:**  
-Update the existing automation so that, for **each** task in `tasks\`:
+For **each** task in `tasks\`:
 
 1. Execute every Markdown file in `tasks\context\pre\` (sorted, alphanumeric) **first**.  
 2. Execute the current normal task file.  
-3. Execute every Markdown file in `tasks\context\post\` (sorted) **last**.  
+3. Execute every Markdown file in `tasks\context\post\` (sorted, alphanumeric) **last**.  
 
 Additional rule: files anywhere under `tasks\context\` are **never** moved to `tasks\implemented\`.
 
