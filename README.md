@@ -133,6 +133,16 @@ successful completion.
 
 See [docs/deliverables/codex-automation.md](docs/deliverables/codex-automation.md) for more details.
 
+### Running Integration Tests
+
+Execute all integration tests with:
+
+```bash
+dotnet test --filter Category=Integration
+```
+
+This builds the CLI and runs cross-platform tests including `SyntheaRunTests`.
+
 ---
 
 ## Project Layout
