@@ -1,3 +1,9 @@
+Use attached 'codex-task-template-prompt.md' as a template to write a codex prompt that can be used as a test of the codex automation.
+
+Povide a download link to the prompt in a markdown file named using kebab-case
+
+---
+
 
 Use attached 'codex-task-template-prompt.md' as a template to write a codex prompt that instructs codex to remember prompts\codex-task-template-automation.md task that codex wrote. 
 Ask codex to read codex-automation.md and CodexTaskProcessor.cs as context.
