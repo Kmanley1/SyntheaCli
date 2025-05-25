@@ -33,6 +33,7 @@ codex-task-update-roadmap.md              --> roadmap.md
 todo:
 update codex automation to append codex logs to the task
 update codex automation to analyze the logs and provide feedback on the codex task 
-
+add single use context, so we can add prompts that relate to a task??
 
 dotnet test tests/Synthea.Cli.IntegrationTests/Synthea.Cli.IntegrationTests.csproj
+
