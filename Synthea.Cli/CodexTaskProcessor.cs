@@ -37,6 +37,16 @@ public static class CodexTaskProcessor
         var preDir = Path.Combine(contextDir, "pre");
         var postDir = Path.Combine(contextDir, "post");
 
+        if (!Directory.Exists(preDir))
+        {
+            throw new DirectoryNotFoundException($"Pre-task directory not found: {preDir}");
+        }
+
+        if (!Directory.Exists(postDir))
+        {
+            throw new DirectoryNotFoundException($"Post-task directory not found: {postDir}");
+        }
+
         foreach (var file in Directory.EnumerateFiles(sourceDir, "*.md", SearchOption.TopDirectoryOnly).OrderBy(f => f))
         {
             var name = Path.GetFileName(file);

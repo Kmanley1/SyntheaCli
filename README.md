@@ -22,7 +22,7 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
     - [Docker](#docker)
     - [`setup.sh` for CI / Codex](#setupsh-for-ci--codex)
       - [GitHub Actions example](#github-actions-example)
-    - [Context Tasks](#context-tasks)
+    - [Pre/Post Context Tasks](#prepost-context-tasks)
   - [Project Layout](#project-layout)
   - [Contributing](#contributing)
   - [License \& Credits](#license--credits)
@@ -123,13 +123,15 @@ steps:
   - run: dotnet /workspace/synthea-cli/bin/Synthea.Cli.dll -- --help
 ```
 
-### Context Tasks
+### Pre/Post Context Tasks
 
-Task automation uses a `tasks/context` folder for reusable setup snippets.
-Pre-task files in `tasks/context/pre/` run before each normal task, while
-post-task files in `tasks/context/post/` run afterward. These context files stay
-in place and are never moved. Only non-context tasks are moved to
-`tasks/implemented` after successful completion.
+Task automation uses a `tasks/context` folder for reusable setup snippets. Pre-task files
+in `tasks/context/pre/` run before each normal task, while post-task files in
+`tasks/context/post/` run afterward. These context files stay in place and are
+never moved. Only non-context tasks are moved to `tasks/implemented` after
+successful completion.
+
+See [docs/automation.md](docs/automation.md) for more details.
 
 ---
 
