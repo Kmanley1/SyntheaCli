@@ -1,7 +1,15 @@
 
+Use attached 'codex-task-template-prompt.md' as a template to write a codex prompt that instructs codex to remember prompts\codex-task-template-automation.md task that codex wrote and ask codex to update so that any files in tasks\context\pre are always run first for each task in \tasks directory and tasks in tasks\context\post are always run last for each task in \tasks directory and that files in tasks\context are never moved to tasks\implemented.
+
+Provide a download link to the prompt in a markdown file named using kebab-case
+
+Use attached 'codex-task-template-prompt.md' as a template to write a codex prompt that instructs codex to remember prompts\codex-task-template-automation.md task that codex wrote and ask codex to update because I moved the context folder from tasks\implmented\context to tasks\context
+
+Open the markdown for me to approve and then provide a download link to the prompt in a markdown file named using kebab-case
+
 
 Use attached 'codex-task-template-prompt.md' as a template to write a codex prompt that instructs codex to remember prompts\codex-task-template-automation.md task that codex wrote and ask codex to update so that any files in tasks\context are always run for each task in \tasks directory and that files in tasks\context are never moved to tasks\implemented.
 
-Provide the prompt in a markdown file named using kebab-case
+Provide a download link to the prompt in a markdown file named using kebab-case
 
 Use attached codex-task-template-prompt.md as a template to write a codex prompt that instructs codex to use 'prompts\codex-task-template-ai-change-log.md' as a template to write the tasks it performs into the file 'deliverables\ai-change-log.md'
