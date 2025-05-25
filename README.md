@@ -125,9 +125,11 @@ steps:
 
 ### Context Tasks
 
-Task automation uses a `tasks/context` folder for reusable setup snippets. These
-files execute before every task run and stay in place. Only non-context tasks are
-moved to `tasks/implemented` after successful completion.
+Task automation uses a `tasks/context` folder for reusable setup snippets.
+Pre-task files in `tasks/context/pre/` run before each normal task, while
+post-task files in `tasks/context/post/` run afterward. These context files stay
+in place and are never moved. Only non-context tasks are moved to
+`tasks/implemented` after successful completion.
 
 ---
 

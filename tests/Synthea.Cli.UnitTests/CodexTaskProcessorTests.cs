@@ -10,6 +10,8 @@ public class CodexTaskProcessorTests : IDisposable
 {
     private readonly string _src;
     private readonly string _dest;
+    private readonly string _preDir;
+    private readonly string _postDir;
 
     public CodexTaskProcessorTests()
     {
@@ -17,7 +19,11 @@ public class CodexTaskProcessorTests : IDisposable
         _dest = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(_src);
         Directory.CreateDirectory(_dest);
-        Directory.CreateDirectory(Path.Combine(_src, "context"));
+        var ctxRoot = Path.Combine(_src, "context");
+        _preDir = Path.Combine(ctxRoot, "pre");
+        _postDir = Path.Combine(ctxRoot, "post");
+        Directory.CreateDirectory(_preDir);
+        Directory.CreateDirectory(_postDir);
     }
 
     public void Dispose()
@@ -54,39 +60,37 @@ public class CodexTaskProcessorTests : IDisposable
     }
 
     [Fact]
-    public void ExecutesContextTasksEachRun()
+    public void ExecutesPreAndPostTasksAroundEachTask()
     {
-        var ctxDir = Path.Combine(_src, "context");
-        Directory.CreateDirectory(ctxDir);
-        var ctxFile = Path.Combine(ctxDir, "ctx.md");
-        File.WriteAllText(ctxFile, "ctx");
+        var preFile = Path.Combine(_preDir, "pre.md");
+        File.WriteAllText(preFile, "p");
+        var postFile = Path.Combine(_postDir, "post.md");
+        File.WriteAllText(postFile, "p");
+        var taskFile = Path.Combine(_src, "task.md");
+        File.WriteAllText(taskFile, "t");
 
-        var impl1 = new StubImplementer(success: true);
-        CodexTaskProcessor.ProcessTasks(_src, _dest, impl1);
+        var impl = new StubImplementer(success: true);
+        CodexTaskProcessor.ProcessTasks(_src, _dest, impl);
 
-        Assert.Contains(ctxFile, impl1.Implemented);
-        Assert.True(File.Exists(ctxFile));
-
-        var impl2 = new StubImplementer(success: true);
-        CodexTaskProcessor.ProcessTasks(_src, _dest, impl2);
-
-        Assert.Contains(ctxFile, impl2.Implemented);
-        Assert.True(File.Exists(ctxFile));
+        Assert.Equal(new[] { preFile, taskFile, postFile }, impl.Implemented);
+        Assert.True(File.Exists(Path.Combine(_dest, "task.md")));
     }
 
     [Fact]
     public void ContextFilesAreNotMoved()
     {
-        var ctxDir = Path.Combine(_src, "context");
-        Directory.CreateDirectory(ctxDir);
-        var ctxFile = Path.Combine(ctxDir, "ctx.md");
-        File.WriteAllText(ctxFile, "ctx");
+        var preFile = Path.Combine(_preDir, "a.md");
+        File.WriteAllText(preFile, "p");
+        var postFile = Path.Combine(_postDir, "b.md");
+        File.WriteAllText(postFile, "p");
 
         var impl = new StubImplementer(success: true);
         CodexTaskProcessor.ProcessTasks(_src, _dest, impl);
 
-        Assert.True(File.Exists(ctxFile));
-        Assert.False(File.Exists(Path.Combine(_dest, "ctx.md")));
+        Assert.True(File.Exists(preFile));
+        Assert.True(File.Exists(postFile));
+        Assert.False(File.Exists(Path.Combine(_dest, "a.md")));
+        Assert.False(File.Exists(Path.Combine(_dest, "b.md")));
     }
 
     private class StubImplementer : ITaskImplementer
