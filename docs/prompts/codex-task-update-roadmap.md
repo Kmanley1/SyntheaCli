@@ -1,4 +1,4 @@
-# Enterprise Architecture Review Roadmap Generate Updates
+# Enterprise Architecture Review Roadmap
 
 ## 🎯 Objective
 Perform an enterprise architecture review and update the `on-going-architectural-eval.md` document with comprehensive findings and recommendations.
@@ -50,4 +50,3 @@ Perform an enterprise architecture review and update the `on-going-architectural
 ## 📌 Notes
 - Ensure clear language, suitable for technical and non-technical stakeholders.
 - Align recommendations with strategic business priorities and feasibility.
-[Download this file](./enterprise_architecture_review_roadmap.md)

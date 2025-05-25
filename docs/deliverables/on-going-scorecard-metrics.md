@@ -17,5 +17,3 @@ The repository root includes `scorecard.json`, which captures baseline architect
 ```
 
 The file can be consumed by dashboards or scripts to monitor progress over time.
-
-[Download scorecard.json](../../scorecard.json)

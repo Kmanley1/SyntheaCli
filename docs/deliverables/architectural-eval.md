@@ -89,4 +89,3 @@ Long term actions:
 
 The accompanying `scorecard.json` in the repository root contains machine-readable scores for these categories.
 
-[Download this file](./on-going-architectural-eval.md)
