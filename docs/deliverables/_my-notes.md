@@ -28,11 +28,14 @@ include in the health check prompt our prompts:
 codex-task-architectural-eval.md which updates on-going-architectural-eval.md
 codex-task-roadmap-update.md which updates on-going-roadmap.md
 
-ai-change-log.md --> always updated
-architecture.md --> describes solution architecture
+ai-change-log.md --> always updated by codex-task
 
 Prompt Used to Update Deliverables        --> Name of Deliverable File to Update
+codex-task-update-ai-change-log.md        --> ai-change-log.md
 codex-task-update-architectural-eval.md   --> architectural-eval.md
+codex-task-update-architecture.md         --> architecture.md
 codex-task-update-health-check.md         --> health-check.md
 codex-task-update-roadmap.md              --> roadmap.md
-codex-task-update-architecture.md         --> architecture.md
+
+
+Use attached codex-task-template-prompt.md as a template to write a codex prompt that instructs codex to use 'prompts\codex-task-template-ai-change-log.md' as a template to write the tasks it performs into the file 'deliverables\ai-change-log.md'
