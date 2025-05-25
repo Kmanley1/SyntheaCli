@@ -22,4 +22,11 @@ YYYY-MM-DD_HH-MM-SS-original-name.md
 
 The renamed file is then moved into `tasks/implemented/`. If a file already starts with that timestamp pattern it is left unchanged so rerunning the automation is safe.
 
+For each completed task the automation also creates two artefacts in `tasks/staged/`:
+
+* `<timestamp>-<task-name>-log.md` – last 200 lines of stdout/stderr.
+* `<timestamp>-<task-name>-feedback.md` – summary with WARN/ERROR counts and duration.
+
+The original task file receives a `## Post‑run Artefacts` section linking to these files before it is moved.
+
 Use `CodexTaskProcessor.ProcessTasks` to run the automation.
