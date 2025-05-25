@@ -5,6 +5,12 @@ Provide a download link to the prompt in a markdown file named using kebab-case
 
 ---
 
+Use attached 'codex-task-template-prompt.md' as a template to write a codex prompt that instructs codex to remember prompts\codex-task-template-automation.md task that codex wrote. Ask codex to analyze the codex automation solution and compare current functionality with codex-automation.md content. Update codex-automation.md with any discrepancies. 
+
+Povide a download link to the prompt in a markdown file named using kebab-case
+
+---
+
 Use attached 'codex-task-template-prompt.md' as a template to write a codex prompt that instructs codex to remember prompts\codex-task-template-automation.md task that codex wrote and ask codex to update to pre-pending the date and time the task startedthis date/time format YYYY-MM-DD_HH-MM-SS add a hyphen after the date created.
 
 Povide a download link to the prompt in a markdown file named using kebab-case
