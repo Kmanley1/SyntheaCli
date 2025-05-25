@@ -1,4 +1,26 @@
-# Codex Automation Overview
+# Codex Automation Definition & High‑Level Workflow
+
+1. **Author initiates**
+
+   - Copies the full task block from **`codex-task-template-run-codex-automation.md`**.
+   - Pastes it directly into the Codex Chat prompt.
+
+2. **Codex interprets task**
+
+   - Reads the instructions and identifies `CodexTaskProcessor` as the execution engine.
+   - Validates folder structure (`docs/tasks`, `tasks/context/*`, etc.).
+   - **Loads `prompts/codex-task-template-automation.md` into its context memory** so all subsequent sub‑tasks remain aligned with the master specification.
+
+3. **Automation kickoff**
+
+   - Codex triggers the **automation process** described in the task template.
+   - Pre‑context → Task → Post‑context flow executes for each task file.
+
+4. **Artefact generation**
+
+   - Renamed task file is moved to `tasks/implemented/`.
+   - Log and feedback files are created in `tasks/staged/`.
+   - Original task gains a `## Post‑run Artefacts` section linking to the new files.
 
 ## Pre/Post Context Tasks
 
