@@ -93,6 +93,24 @@ public class CodexTaskProcessorTests : IDisposable
         Assert.False(File.Exists(Path.Combine(_dest, "b.md")));
     }
 
+    [Fact]
+    public void ThrowsIfPreDirMissing()
+    {
+        Directory.Delete(_preDir, true);
+        var ex = Assert.Throws<DirectoryNotFoundException>(() =>
+            CodexTaskProcessor.ProcessTasks(_src, _dest, new StubImplementer(true)));
+        Assert.Contains("Pre-task directory", ex.Message);
+    }
+
+    [Fact]
+    public void ThrowsIfPostDirMissing()
+    {
+        Directory.Delete(_postDir, true);
+        var ex = Assert.Throws<DirectoryNotFoundException>(() =>
+            CodexTaskProcessor.ProcessTasks(_src, _dest, new StubImplementer(true)));
+        Assert.Contains("Post-task directory", ex.Message);
+    }
+
     private class StubImplementer : ITaskImplementer
     {
         private readonly bool _success;
