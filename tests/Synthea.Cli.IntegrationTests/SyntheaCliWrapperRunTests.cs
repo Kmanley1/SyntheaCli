@@ -34,41 +34,77 @@ public class SyntheaCliWrapperRunTests : IDisposable
         return paths.Any(p => File.Exists(Path.Combine(p, exe)));
     }
 
-    [SkippableFact]
-    public async Task Synthea_CLI_Wrapper_Generates_Output()
+    private async Task<(int exitCode, string stdOut, string stdErr)> RunCliCommandAsync(string args, string? workingDir = null)
     {
         var dllPath = Path.GetFullPath(Path.Combine("..", "..", "..", "..", "Synthea.Cli", "bin", "Release", "net8.0", "Synthea.Cli.dll"));
         bool dllExists = File.Exists(dllPath);
         bool globalExists = CommandExists("synthea");
         if (!dllExists && !globalExists)
         {
-            Console.WriteLine("Skipping test: Synthea CLI wrapper not found");
-            return;
+            throw new InvalidOperationException("Synthea CLI wrapper not found");
         }
         if (!CommandExists("java"))
         {
-            Console.WriteLine("Skipping test: Java not found");
-            return;
+            throw new InvalidOperationException("Java not found");
         }
 
         string command = dllExists
-            ? $"dotnet \"{dllPath}\" run --output ./output --population 1"
-            : "synthea run --output ./output --population 1";
+            ? $"dotnet \"{dllPath}\" {args}"
+            : $"synthea {args}";
 
         var psi = OperatingSystem.IsWindows()
             ? new ProcessStartInfo("cmd.exe", $"/c {command}")
             : new ProcessStartInfo("bash", $"-c \"{command}\"");
-        psi.WorkingDirectory = _workDir;
+        psi.WorkingDirectory = workingDir ?? _workDir;
         psi.RedirectStandardError = true;
         psi.RedirectStandardOutput = true;
 
         using var proc = Process.Start(psi)!;
+        var stdOutTask = proc.StandardOutput.ReadToEndAsync();
+        var stdErrTask = proc.StandardError.ReadToEndAsync();
         await proc.WaitForExitAsync();
+        var stdOut = await stdOutTask;
+        var stdErr = await stdErrTask;
+        return (proc.ExitCode, stdOut, stdErr);
+    }
 
-        Assert.Equal(0, proc.ExitCode);
+    private const string OutputDir = "output";
+    private const string FhirSubDir = "output";
+    private const string FhirTypeDir = "fhir";
+    private const string HospitalInfo = "hospitalInformation";
+    private const string PractitionerInfo = "practitionerInformation";
 
-        var outDir = Path.Combine(_workDir, "output");
-        Assert.True(Directory.Exists(outDir));
-        Assert.NotEmpty(Directory.GetFiles(outDir, "*", SearchOption.AllDirectories));
+    private async Task<string[]> RunSyntheaAndGetPatientFiles(int population)
+    {
+        var testOutputDir = OutputDir;
+        var args = $"run --output ./{testOutputDir} --population {population}";
+        var (exitCode, stdOut, stdErr) = await RunCliCommandAsync(args);
+
+        Assert.Equal(0, exitCode);
+
+        var fhirDir = Path.Combine(_workDir, testOutputDir, FhirSubDir, FhirTypeDir);
+        EnsureFhirDirExists(fhirDir, stdOut, stdErr);
+        return Directory.GetFiles(fhirDir, "*.json", SearchOption.TopDirectoryOnly)
+            .Where(f => !f.Contains(HospitalInfo) && !f.Contains(PractitionerInfo))
+            .ToArray();
+    }
+
+    private void EnsureFhirDirExists(string fhirDir, string stdOut, string stdErr)
+    {
+        if (!Directory.Exists(fhirDir))
+        {
+            var structure = string.Join("\n", Directory.GetFileSystemEntries(_workDir, "*", SearchOption.AllDirectories));
+            var message = $"FHIR directory not found: {fhirDir}\n\nDirectory structure under work dir:\n{structure}\n\nSTDOUT:\n{stdOut}\n\nSTDERR:\n{stdErr}";
+            throw new DirectoryNotFoundException(message);
+        }
+    }
+
+    [Theory]
+    [InlineData(1, 1)]
+    [InlineData(2, 2)]
+    public async Task Synthea_CLI_Wrapper_Generates_Correct_Number_Of_Patient_Files(int population, int expectedCount)
+    {
+        var files = await RunSyntheaAndGetPatientFiles(population);
+        Assert.Equal(expectedCount, files.Length);
     }
 }

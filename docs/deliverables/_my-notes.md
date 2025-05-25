@@ -18,15 +18,7 @@ This deliverable explains how the project will use AI/ML techniques for continuo
 - Feed insights back into the next planning cycle, adjusting priorities based on AI-driven recommendations.
 
 
-write codex-task-health-check.md codex prompt
-
-Research industry best practices for an automated ai run health check on software. 
-
-Using the files prompts\codex-task-prompt-template.md and research\Comprehensive Codex Prompt Template and Best Practices.pdf write the prompt to perform the health check on synteha-cli
-
-include in the health check prompt our prompts:
-codex-task-architectural-eval.md which updates on-going-architectural-eval.md
-codex-task-roadmap-update.md which updates on-going-roadmap.md
+include in the health check prompt:
 
 ai-change-log.md --> always updated by codex-task
 
@@ -38,3 +30,9 @@ codex-task-update-health-check.md         --> health-check.md
 codex-task-update-roadmap.md              --> roadmap.md
 
 
+todo:
+update codex automation to append codex logs to the task
+update codex automation to analyze the logs and provide feedback on the codex task 
+
+
+dotnet test tests/Synthea.Cli.IntegrationTests/Synthea.Cli.IntegrationTests.csproj
