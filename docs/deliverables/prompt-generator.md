@@ -3,13 +3,23 @@ Use attached 'codex-task-template-prompt.md' as a template to write a codex prom
 
 Provide a download link to the prompt in a markdown file named using kebab-case
 
+---
+
+Use attached 'codex-task-template-prompt.md' as a template to write a codex prompt that instructs codex to remember prompts\codex-task-template-automation.md task that codex wrote and ask codex to update to pre-pending the date and time the task startedthis date/time format YYYY-MM-DD_HH-MM-SS add a hyphen after the date created.
+
+Povide a download link to the prompt in a markdown file named using kebab-case
+
+---
+
 Use attached 'codex-task-template-prompt.md' as a template to write a codex prompt that instructs codex to remember prompts\codex-task-template-automation.md task that codex wrote and ask codex to update because I moved the context folder from tasks\implmented\context to tasks\context
 
 Open the markdown for me to approve and then provide a download link to the prompt in a markdown file named using kebab-case
 
+---
 
 Use attached 'codex-task-template-prompt.md' as a template to write a codex prompt that instructs codex to remember prompts\codex-task-template-automation.md task that codex wrote and ask codex to update so that any files in tasks\context are always run for each task in \tasks directory and that files in tasks\context are never moved to tasks\implemented.
 
 Provide a download link to the prompt in a markdown file named using kebab-case
 
+---
 Use attached codex-task-template-prompt.md as a template to write a codex prompt that instructs codex to use 'prompts\codex-task-template-ai-change-log.md' as a template to write the tasks it performs into the file 'deliverables\ai-change-log.md'
