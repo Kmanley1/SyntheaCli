@@ -8,7 +8,8 @@ The Codex automation processes tasks under `docs/tasks`. For each normal task fi
 2. Executes the normal task file.
 3. Runs all post-task markdown files from `tasks/context/post/` in sorted order.
 
-Pre- and post-task directories must exist. If either is missing, the automation fails with a clear `DirectoryNotFoundException` message.
+The automation ensures the context directories exist. If either `tasks/context/pre/` or
+`tasks/context/post/` is missing, it is automatically created so processing can continue.
 
 Files anywhere under `tasks/context` are never moved to `tasks/implemented`.
 

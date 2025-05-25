@@ -30,23 +30,24 @@ public static class CodexTaskProcessor
         Directory.CreateDirectory(targetDir);
 
         var contextDir = Path.Combine(sourceDir, "context");
-        if (!Directory.Exists(contextDir))
-        {
-            throw new DirectoryNotFoundException($"Context directory not found: {contextDir}");
-        }
+        Directory.CreateDirectory(contextDir);
 
         var preDir = Path.Combine(contextDir, "pre");
         var postDir = Path.Combine(contextDir, "post");
 
         if (!Directory.Exists(preDir))
         {
-            throw new DirectoryNotFoundException($"Pre-task directory not found: {preDir}");
+            Console.WriteLine($"Creating missing pre-task directory: {preDir}");
         }
-
         if (!Directory.Exists(postDir))
         {
-            throw new DirectoryNotFoundException($"Post-task directory not found: {postDir}");
+            Console.WriteLine($"Creating missing post-task directory: {postDir}");
         }
+
+        // ensure context subdirectories exist so automation continues even if
+        // repository is missing them. This mirrors 'mkdir -p' behaviour.
+        Directory.CreateDirectory(preDir);
+        Directory.CreateDirectory(postDir);
 
         foreach (var file in Directory.EnumerateFiles(sourceDir, "*.md", SearchOption.TopDirectoryOnly).OrderBy(f => f))
         {

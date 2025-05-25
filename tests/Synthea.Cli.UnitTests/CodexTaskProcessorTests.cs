@@ -99,21 +99,22 @@ public class CodexTaskProcessorTests : IDisposable
     }
 
     [Fact]
-    public void ThrowsIfPreDirMissing()
+    public void CreatesMissingContextDirsAndMovesFile()
     {
         Directory.Delete(_preDir, true);
-        var ex = Assert.Throws<DirectoryNotFoundException>(() =>
-            CodexTaskProcessor.ProcessTasks(_src, _dest, new StubImplementer(true)));
-        Assert.Contains("Pre-task directory", ex.Message);
-    }
-
-    [Fact]
-    public void ThrowsIfPostDirMissing()
-    {
         Directory.Delete(_postDir, true);
-        var ex = Assert.Throws<DirectoryNotFoundException>(() =>
-            CodexTaskProcessor.ProcessTasks(_src, _dest, new StubImplementer(true)));
-        Assert.Contains("Post-task directory", ex.Message);
+        var file = Path.Combine(_src, "task.md");
+        File.WriteAllText(file, "t");
+
+        var impl = new StubImplementer(success: true);
+        CodexTaskProcessor.ProcessTasks(_src, _dest, impl);
+
+        Assert.True(Directory.Exists(_preDir));
+        Assert.True(Directory.Exists(_postDir));
+
+        Assert.False(File.Exists(file));
+        var moved = Directory.GetFiles(_dest).Single();
+        Assert.Matches("^\\d{4}-\\d{2}-\\d{2}_\\d{2}-\\d{2}-\\d{2}-task\\.md$", Path.GetFileName(moved));
     }
 
     [Fact]
