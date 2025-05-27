@@ -1,15 +1,14 @@
 # Project Structure Recommendations
 
-The following table lists structural issues observed in the current repository and actionable fixes.
+The table below summarizes structural issues found in the `synthea-cli` repository and suggested improvements. The best-practices PDF was not accessible, so recommendations are drawn from community standards and the current layout.
 
 | Issue | Current Path | Recommended Change | Rationale |
 | --- | --- | --- | --- |
-| Build artifacts checked in | `nupkgs/synthea-cli.0.1.0.nupkg` as seen in `docs/deliverables/project-structure.md` | Remove the directory and ignore with `.gitignore` | Prevents repository bloat |
-| Stale placeholder referenced by solution | `Synthea.Cli.sln` lines 10‑14 include `tests/placeholder.txt` | Delete the solution item | Avoids confusion and warning messages |
-| Sparse VS Code workspace | `synthea-cli.code-workspace` has only a folder reference | Add `.vscode/` with tasks and recommended extensions | Provides consistent development environment |
-| Duplicate setup scripts | `run/setup.sh` and `setup.sh` | Consolidate under `tools/` | Single entry point for environment prep |
-| Missing contribution guide | Not present | Add `CONTRIBUTING.md` with workflow, style, and test instructions | Streamlines onboarding |
-| No CODEOWNERS file | Not present | Create `CODEOWNERS` mapping maintainers to paths | Clarifies responsibility |
-| Mixed script locations | `tools/windows/` vs. root scripts | Group under `build/` or clearly named directories | Simplifies discovery |
-| No `.vscode/tasks.json` for tests | Absent | Provide tasks to run `dotnet test` and format code | Encourages repeatable commands |
-| Many draft documents under `docs/deliverables/` | Lines 10‑22 of `project-structure.md` | Archive or prune drafts, keep only finalized docs | Reduces clutter |
+| Build artifact committed | `nupkgs/synthea-cli.0.1.0.nupkg` lines 70‑72 in `project-structure.md` | Remove directory and ignore via `.gitignore` | Prevents repository bloat |
+| Stale placeholder in solution | `tests/placeholder.txt` reference around line 10 of `Synthea.Cli.sln` | Delete entry | Avoids confusion and warnings |
+| Duplicate setup scripts | `run/setup.sh` and root `setup.sh` lines 73‑74 and 114 | Consolidate under `tools/` | Single onboarding command |
+| Minimal workspace file | `synthea-cli.code-workspace` line 115 | Expand with `.vscode/` tasks, launch, and extensions | Aligns editor experience |
+| No `CODEOWNERS` file | Not present in repo tree | Create one mapping maintainers | Clarifies responsibility |
+| Numerous draft docs | Many entries under `docs/deliverables/` lines 10‑22 | Archive or move finalized docs to `docs/` | Reduces clutter |
+| Committed test results | `tests/Synthea.Cli.IntegrationTests/TestResults/` lines 85‑88 | Remove and add to `.gitignore` | Keeps history clean |
+| Scripts scattered | `tools/windows/` plus root-level scripts lines 100‑106 | Move under `tools/` or `build/` with clear names | Easier discovery |
