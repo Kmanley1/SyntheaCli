@@ -24,18 +24,10 @@ docs/
 │   ├─ health-check.md
 │   ├─ iterative-ai-enabled-process.md
 │   ├─ on-going-scorecard-metrics.md
-│   ├─ project-structure-recommendations-v2.md
-│   ├─ project-structure-recommendations-v3.md
-│   ├─ project-structure-recommendations-v4.md
-│   ├─ project-structure-recommendations-v5.md
 │   ├─ project-structure-recommendations.md
 │   ├─ project-structure.md
 │   ├─ prompt-generator.md
 │   ├─ roadmap.md
-│   ├─ vs-solution-organization-guidelines-v2.md
-│   ├─ vs-solution-organization-guidelines-v3.md
-│   ├─ vs-solution-organization-guidelines-v4.md
-│   ├─ vs-solution-organization-guidelines-v5.md
 │   └─ vs-solution-organization-guidelines.md
 ├─ prompts/
 │   ├─ codex-task-template-ai-change-log.md
