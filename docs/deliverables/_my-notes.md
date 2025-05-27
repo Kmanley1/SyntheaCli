@@ -36,3 +36,10 @@ update codex automation to analyze the logs and provide feedback on the codex ta
 add single use context, so we can add prompts that relate to a task??
 
 dotnet test tests/Synthea.Cli.IntegrationTests/Synthea.Cli.IntegrationTests.csproj
+
+
+Feedback Loop:
+
+docs/prompts/codex-task-template-solution-critique.md --> prompt used to do the feedback loop
+docs/deliverables/vs-solution-organization-guidelines.md --> rules to evaluate changes
+docs/deliverables/project-structure-recommendations.md --> recommendations to iterativly implement via copilot 
