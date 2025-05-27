@@ -1,7 +1,10 @@
 # See https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 # This file designates code owners for the repository.
 
-*       @Kmanley1
-src/    @Kmanley1
-scripts/ @Kmanley1
-build/  @Kmanley1
+*        @Kmanley1
+src/     @Kmanley1
+tests/   @Kmanley1
+tools/   @Kmanley1
+build/   @Kmanley1
+docs/    @Kmanley1
+.vscode/ @Kmanley1

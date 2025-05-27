@@ -41,11 +41,11 @@ public class SyntheaCliWrapperRunTests : IDisposable
         bool globalExists = CommandExists("synthea");
         if (!dllExists && !globalExists)
         {
-            throw new InvalidOperationException("Synthea CLI wrapper not found");
+            throw new SkipTestException("Synthea CLI wrapper not found. Skipping integration test.");
         }
         if (!CommandExists("java"))
         {
-            throw new InvalidOperationException("Java not found");
+            throw new SkipTestException("Java not found. Skipping integration test.");
         }
 
         string command = dllExists
@@ -104,7 +104,15 @@ public class SyntheaCliWrapperRunTests : IDisposable
     [InlineData(2, 2)]
     public async Task Synthea_CLI_Wrapper_Generates_Correct_Number_Of_Patient_Files(int population, int expectedCount)
     {
-        var files = await RunSyntheaAndGetPatientFiles(population);
-        Assert.Equal(expectedCount, files.Length);
+        try
+        {
+            var files = await RunSyntheaAndGetPatientFiles(population);
+            Assert.Equal(expectedCount, files.Length);
+        }
+        catch (SkipTestException ex)
+        {
+            // Mark as skipped by failing with a clear message (xUnit does not support runtime skip natively)
+            Assert.Fail($"SKIPPED: {ex.Message}");
+        }
     }
 }
