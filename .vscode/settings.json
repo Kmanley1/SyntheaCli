@@ -1,0 +1,12 @@
+{
+    // Recommended settings for .NET and Markdown development
+    "editor.formatOnSave": true,
+    "files.exclude": {
+        "**/bin": true,
+        "**/obj": true,
+        "**/.vs": true
+    },
+    "[markdown]": {
+        "editor.wordWrap": "on"
+    }
+}

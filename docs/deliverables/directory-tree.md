@@ -74,7 +74,7 @@ nupkgs/
 └─ synthea-cli.0.1.0.nupkg
 run/
 └─ setup.sh    # thin wrapper for Codex harness
-scripts/
+tools/
 ├─ windows/
 │   ├─ temp/
 │   │   └─ rename-implemented.ps1

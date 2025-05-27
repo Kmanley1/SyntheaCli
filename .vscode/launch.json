@@ -1,0 +1,25 @@
+{
+    // VS Code launch configuration for debugging .NET projects
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": ".NET Launch (Synthea.Cli)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/src/Synthea.Cli/bin/Debug/net8.0/Synthea.Cli.dll",
+            "args": [
+                "run",
+                "-o",
+                "./synthea-output",
+                "--state",
+                "OH",
+                "-p",
+                "10"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "stopAtEntry": false
+        }
+    ]
+}

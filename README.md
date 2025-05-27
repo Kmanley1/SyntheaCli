@@ -1,3 +1,17 @@
+# Scripts
+
+All cross-platform and reusable scripts are located in `tools/windows/` (for PowerShell) or `tools/` (for general helpers). Single-use or legacy scripts are being consolidated and removed from `tools/windows/`.
+
+## Usage
+
+- `tools/windows/Write-DirectoryTreeMarkdown.ps1`: Generates a Markdown directory tree for the project. Example:
+  ```pwsh
+  pwsh -NoProfile -ExecutionPolicy Bypass -File ./tools/windows/Write-DirectoryTreeMarkdown.ps1 -Path . -OutFile ./docs/deliverables/project-structure.md -IncludeFiles
+  ```
+- `tools/windows/install-vscode-extensions.ps1`: Installs recommended VS Code extensions for this project.
+- `tools/windows/synthea-cli-create.ps1`: Helper for scaffolding a new CLI repo.
+
+> **Note:** Scripts in `tools/windows/` are preferred for PowerShell helpers. All general-purpose scripts are now under `tools/` for better maintainability and discoverability.
 # Synthea-CLI
 
 [![NuGet](https://img.shields.io/nuget/v/synthea-cli.svg)](https://www.nuget.org/packages/synthea-cli/)
@@ -9,6 +23,8 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
 
 ## Table of Contents
 
+- [Scripts](#scripts)
+  - [Usage](#usage)
 - [Synthea-CLI](#synthea-cli)
   - [Table of Contents](#table-of-contents)
   - [Features](#features)
@@ -23,6 +39,7 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
     - [`setup.sh` for CI / Codex](#setupsh-for-ci--codex)
       - [GitHub Actions example](#github-actions-example)
     - [Pre/Post Context Tasks](#prepost-context-tasks)
+    - [Running Integration Tests](#running-integration-tests)
   - [Project Layout](#project-layout)
   - [Contributing](#contributing)
   - [License \& Credits](#license--credits)
@@ -157,7 +174,7 @@ synthea-cli/
 ├─ setup.sh                      # CI / Codex build script
 ├─ docs/
 │   └─ Architecture.md           # CLI flow diagrams & overview
-├─ scripts/
+├─ tools/
 │   ├─ synthea-cli-create.ps1    # helper to scaffold new CLI repo
 │   └─ windows/
 │       └─ install-vscode-extensions.ps1

@@ -61,7 +61,7 @@ The supplied best-practices PDF could not be accessed; PDF-based comparison is t
 | Projects nested directly under root without a `src/` folder | Harder to manage as solution scales | Use `src/ProjectName/ProjectName.csproj` |
 | Missing workspace settings in VS Code | Inconsistent dev environments | Include `.vscode/` with recommended extensions and tasks |
 | Referencing non-existent files in the solution | Breaks IDE builds and discourages trust | Clean out stale or placeholder items |
-| Mixed script locations without convention | Developers must search across folders | Centralize build and utility scripts under `build/` or `scripts/` |
+| Mixed script locations without convention | Developers must search across folders | Centralize build and utility scripts under `build/` or `tools/` |
 | Using shared project files across unrelated solutions | Creates hidden dependencies | Keep each repository self-contained |
 | Untracked configuration or secrets checked into source | Security risk and environment coupling | Use template config files and environment variables |
 
@@ -78,11 +78,11 @@ The supplied best-practices PDF could not be accessed; PDF-based comparison is t
 | Build artifact stored in `nupkgs/` | `docs/deliverables/project-structure.md` lines show `nupkgs/synthea-cli.0.1.0.nupkg` | Remove and add `nupkgs/` to `.gitignore` | Keeps repo lean and avoids outdated packages |
 | Solution references `tests/placeholder.txt` that does not exist | `Synthea.Cli.sln` lines 10-14 | Delete placeholder entry from solution | Prevents build warnings and confusion |
 | Minimal VS Code workspace with no settings | `synthea-cli.code-workspace` lines 1-9 | Add `.vscode/` folder with tasks and extensions | Aligns editor experience across team |
-| Duplicate `setup.sh` in `run/` and root | `project-structure.md` lines 69-79 show `run/setup.sh` | Keep one canonical script under `scripts/` or `build/` | Removes ambiguity about setup process |
+| Duplicate `setup.sh` in `run/` and root | `project-structure.md` lines 69-79 show `run/setup.sh` | Keep one canonical script under `tools/` or `build/` | Removes ambiguity about setup process |
 | Lack of `CONTRIBUTING.md` or `CODEOWNERS` | Not present in repository tree | Create contribution guide and ownership file | Clarifies workflow and review expectations |
 | Numerous documentation drafts in `docs/deliverables/` | `project-structure.md` lines 10-22 | Move finalized docs to `docs/` and trim drafts | Streamlines onboarding materials |
 | Missing `.vscode/tasks.json` for tests | No `.vscode` directory | Provide tasks for `dotnet test` | Makes running tests easier for new contributors |
-| `scripts/windows/` contains single-use helpers | `project-structure.md` lines 71-80 | Consolidate scripts and document usage | Reduces clutter and encourages cross-platform scripts |
+| `scripts/windows/` contains single-use helpers | `project-structure.md` lines 71-80 | Consolidate scripts and document usage in `tools/` | Reduces clutter and encourages cross-platform scripts |
 
 ## 11 References
 - Current repository tree excerpt from `docs/deliverables/project-structure.md` lines 1‑22 shows the overall folder layout.

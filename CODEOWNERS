@@ -1,0 +1,7 @@
+# See https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# This file designates code owners for the repository.
+
+*       @Kmanley1
+src/    @Kmanley1
+scripts/ @Kmanley1
+build/  @Kmanley1

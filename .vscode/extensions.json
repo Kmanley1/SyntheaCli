@@ -1,0 +1,9 @@
+{
+    // Recommended VS Code extensions for .NET and Markdown
+    "recommendations": [
+        "ms-dotnettools.csharp",
+        "ms-dotnettools.vscode-dotnet-runtime",
+        "yzhang.markdown-all-in-one",
+        "davidanson.vscode-markdownlint"
+    ]
+}

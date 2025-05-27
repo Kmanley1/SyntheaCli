@@ -72,7 +72,7 @@ nupkgs/
 └─ synthea-cli.0.1.0.nupkg
 run/
 └─ setup.sh
-scripts/
+tools/
 └─ windows/
 │   └─ Write-DirectoryTreeMarkdown.ps1
 src/
