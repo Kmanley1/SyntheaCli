@@ -5,6 +5,13 @@ synthea-cli/
 └─ workflows/
 │   ├─ ci.yml
 │   └─ nuget.yml
+.vscode/
+├─ extensions.json
+├─ launch.json
+├─ settings.json
+└─ tasks.json
+build/
+└─ stub.md
 docs/
 ├─ deliverables/
 │   ├─ _my-notes.md
@@ -17,8 +24,13 @@ docs/
 │   ├─ health-check.md
 │   ├─ iterative-ai-enabled-process.md
 │   ├─ on-going-scorecard-metrics.md
+│   ├─ project-structure-recommendations-v2.md
+│   ├─ project-structure-recommendations.md
+│   ├─ project-structure.md
 │   ├─ prompt-generator.md
-│   └─ roadmap.md
+│   ├─ roadmap.md
+│   ├─ vs-solution-organization-guidelines-v2.md
+│   └─ vs-solution-organization-guidelines.md
 ├─ prompts/
 │   ├─ codex-task-template-ai-change-log.md
 │   ├─ codex-task-template-prompt.md
@@ -34,6 +46,7 @@ docs/
 ├─ research/
 │   ├─ AI_Code_Health_Playbook.md
 │   ├─ Comprehensive Codex Prompt Template and Best Practices.pdf
+│   ├─ NET Core CLI GitHub Repository Best Practices.pdf
 │   ├─ Source_Code_Documentation_Playbook.md
 │   ├─ Synthea - An approach, method, and software mechanism for generating synthetic patients and the synthetic electronic health care record.pdf
 │   └─ Using Synthea and Synthetic Data Generators in a .NET CLI for HL7 v2, FHIR, and CCDA.pdf
@@ -68,13 +81,6 @@ docs/
 │   ├─ codex-prompt-generate-directory-report.md
 │   ├─ codex-task-template-smoke-test-task-one.md
 │   └─ codex-task-template-smoke-test-task-two.md
-nupkgs/
-└─ synthea-cli.0.1.0.nupkg
-run/
-└─ setup.sh
-tools/
-└─ windows/
-│   └─ Write-DirectoryTreeMarkdown.ps1
 src/
 └─ Synthea.Cli/
 │   ├─ CodexTaskProcessor.cs
@@ -107,6 +113,8 @@ tools/
 .gitattributes
 .gitignore
 CHANGELOG.md
+CODEOWNERS
+CONTRIBUTING.md
 Directory.Build.props
 LICENSE
 README.md
