@@ -75,7 +75,7 @@ Chutzpah.json
 ChutzpahSettings.json
 
 # Visual Studio 2015/2017 cache/options directory
-.vs/
+# (see below for main .vs/ ignore rule)
 #.vs/**/v16/
 # Uncomment if your IDE is older than 2019
 # .vs/**/v15/
@@ -93,7 +93,7 @@ install/
 install_manifest.txt
 
 # MSTest test Results
-[Tt]est[Rr]esult*/
+# (covered by **/TestResults/ above)
 [Bb]uild[Ll]og.*
 
 # NUNIT
@@ -155,8 +155,7 @@ StyleCopReport.xml
 *.pyd
 *.pidb
 
-# Visual Studio Code
-.vscode/*   # Comment this line if you want to share workspace settings
+
 
 # Rider
 .idea/
@@ -217,10 +216,7 @@ DocProject/buildhelp/
 __pycache__/
 *.pyc
 
-# Node.js Tools for Visual Studio
-node_modules/
-npm-debug.log
-yarn-error.log
+
 
 # Visual Studio 6 build log
 *.plg
@@ -268,8 +264,7 @@ FakesAssemblies/
 # WCF RIA Services
 Generated_Code/
 
-# Node
-node_modules/
+
 
 # SQL Server files
 *.mdf
@@ -349,5 +344,3 @@ intl-cache/
 
 # Project-specific files
 synthea-output/*
-docs/reference/Patterns_of_Enterprise_Application_Architecture.pdf
-docs/reference/Optimizing_Microsoft_Azure_Workloads.pdf
