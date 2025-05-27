@@ -1,6 +1,25 @@
+<!-- Directory.Build.props -->
 <Project>
+  <PropertyGroup>
+    <RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
+
+    <!-- Final outputs -->
+    <BaseOutputPath>$(RepoRoot)artifacts\bin\</BaseOutputPath>
+
+    <!-- Intermediates -->
+    <BaseIntermediateOutputPath>$(RepoRoot)artifacts\obj\</BaseIntermediateOutputPath>
+
+    <!-- Tell the SDK that anything in artifacts\obj\ is *not*
+         part of the hand-written source set -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);artifacts\obj\**</DefaultItemExcludes>
+    <DefaultItemExcludesInProjectFolder>
+      $(DefaultItemExcludesInProjectFolder);artifacts\obj\**
+    </DefaultItemExcludesInProjectFolder>
+  </PropertyGroup>
+
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+  
 </Project>
