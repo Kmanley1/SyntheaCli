@@ -25,7 +25,7 @@ jobs:
           fi
       - name: Pack
         run: |
-          dotnet pack Synthea.Cli/Synthea.Cli.csproj -c Release -o artifacts \
+          dotnet pack src/Synthea.Cli/Synthea.Cli.csproj -c Release -o artifacts \
             /p:ContinuousIntegrationBuild=true /p:PackageVersion=${{ env.VERSION }}
       - name: Push
         run: dotnet nuget push artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json

@@ -6,6 +6,7 @@ synthea-cli/
 │   ├─ ci.yml
 │   └─ nuget.yml
 deliverables/
+├─ directory-tree.md
 └─ Generate-DirectoryReport.ps1
 docs/
 ├─ deliverables/
@@ -81,11 +82,12 @@ scripts/
 │   ├─ nuget-helper.ps1
 │   └─ Write-DirectoryTreeMarkdown.ps1
 └─ synthea-cli-create.ps1    # helper to scaffold new CLI repo
-Synthea.Cli/
-├─ CodexTaskProcessor.cs
-├─ JarManager.cs    # JAR download & cache helper
-├─ Program.cs    # System.CommandLine entry point
-└─ Synthea.Cli.csproj
+src/
+└─ Synthea.Cli/
+│   ├─ CodexTaskProcessor.cs
+│   ├─ JarManager.cs    # JAR download & cache helper
+│   ├─ Program.cs    # System.CommandLine entry point
+│   └─ Synthea.Cli.csproj
 tests/
 ├─ Synthea.Cli.IntegrationTests/
 │   ├─ TestResults/

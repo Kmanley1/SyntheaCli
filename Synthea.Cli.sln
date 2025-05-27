@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Synthea.Cli", "Synthea.Cli\Synthea.Cli.csproj", "{CCE15CD9-717A-4E46-A3BB-ADCF87F66042}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Synthea.Cli", "src\Synthea.Cli\Synthea.Cli.csproj", "{CCE15CD9-717A-4E46-A3BB-ADCF87F66042}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{A1B2C3D4-E5F6-7890-1234-56789ABCDEF0}"
 	ProjectSection(SolutionItems) = preProject

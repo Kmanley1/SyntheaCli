@@ -10,7 +10,7 @@
     <AssemblyName>Synthea.Cli.IntegrationTests</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Synthea.Cli\Synthea.Cli.csproj" />
+    <ProjectReference Include="..\..\src\Synthea.Cli\Synthea.Cli.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Remove="**/*.json" />

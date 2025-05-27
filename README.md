@@ -164,7 +164,7 @@ synthea-cli/
 ├─ run/
 │   └─ setup.sh                  # thin wrapper for Codex harness
 ├─ Synthea.Cli.sln               # Visual Studio solution
-├─ Synthea.Cli/                  # main CLI project
+├─ src/Synthea.Cli/              # main CLI project
 │   ├─ Program.cs                # System.CommandLine entry point
 │   ├─ JarManager.cs             # JAR download & cache helper
 │   └─ Synthea.Cli.csproj

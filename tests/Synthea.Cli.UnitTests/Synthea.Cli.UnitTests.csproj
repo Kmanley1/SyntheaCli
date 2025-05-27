@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Synthea.Cli\Synthea.Cli.csproj" />
+    <ProjectReference Include="..\..\src\Synthea.Cli\Synthea.Cli.csproj" />
   </ItemGroup>
 
 </Project>
