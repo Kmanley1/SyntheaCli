@@ -9,7 +9,7 @@ namespace Synthea.Cli;
 
 public static class JarManager
 {
-    private const string Repo    = "synthetichealth/synthea";
+    private const string Repo = "synthetichealth/synthea";
     private const string JarHint = "with-dependencies.jar";   // asset we want
     private const string ShaHint = ".sha256";                 // checksum (if provided)
 
@@ -17,7 +17,7 @@ public static class JarManager
     {
         DefaultRequestHeaders =
         {
-            UserAgent = { ProductInfoHeaderValue.Parse("synthea-cli/0.1") }
+            UserAgent = { ProductInfoHeaderValue.Parse("Synthea.Cli/0.1") }
         }
     };
 
@@ -34,7 +34,7 @@ public static class JarManager
     {
         var cacheRoot = CacheRootOverride ??
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var cacheDir = Path.Combine(cacheRoot, "synthea-cli");
+        var cacheDir = Path.Combine(cacheRoot, "Synthea.Cli");
 
         Directory.CreateDirectory(cacheDir);
 
@@ -58,7 +58,7 @@ public static class JarManager
         foreach (var a in assets.EnumerateArray())
         {
             var name = a.GetProperty("name").GetString();
-            var url  = a.GetProperty("browser_download_url").GetString();
+            var url = a.GetProperty("browser_download_url").GetString();
             if (name is null || url is null) continue;
 
             if (name.Contains(JarHint, StringComparison.OrdinalIgnoreCase))

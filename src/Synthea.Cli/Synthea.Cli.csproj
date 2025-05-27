@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackAsTool>true</PackAsTool>
-    <PackageId>synthea-cli</PackageId>
+    <PackageId>Synthea.Cli</PackageId>
     <ToolCommandName>synthea</ToolCommandName>
     <DotNetCliToolAliases>syn</DotNetCliToolAliases>
     <PackageVersion>0.2.0</PackageVersion>
@@ -14,7 +14,7 @@
     <PackageTags>synthea;health;cli;dotnet-tool</PackageTags>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <RepositoryUrl>https://github.com/Kmanley1/synthea-cli</RepositoryUrl>
+    <RepositoryUrl>https://github.com/Kmanley1/Synthea.Cli</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 

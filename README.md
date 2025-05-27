@@ -12,11 +12,11 @@ All cross-platform and reusable scripts are located in `tools/windows/` (for Pow
 - `tools/windows/synthea-cli-create.ps1`: Helper for scaffolding a new CLI repo.
 
 > **Note:** Scripts in `tools/windows/` are preferred for PowerShell helpers. All general-purpose scripts are now under `tools/` for better maintainability and discoverability.
-# Synthea-CLI
+# Synthea.Cli
 
-[![NuGet](https://img.shields.io/nuget/v/synthea-cli.svg)](https://www.nuget.org/packages/synthea-cli/)
+[![NuGet](https://img.shields.io/nuget/v/Synthea.Cli.svg)](https://www.nuget.org/packages/Synthea.Cli/)
 
-`synthea-cli` is a cross-platform **.NET 8** command-line wrapper around **[Synthea™](https://github.com/synthetichealth/synthea)** — MITRE’s open-source synthetic health-record generator.  
+`Synthea.Cli` is a cross-platform **.NET 8** command-line wrapper around **[Synthea™](https://github.com/synthetichealth/synthea)** — MITRE’s open-source synthetic health-record generator.  
 The tool downloads the latest Synthea JAR on first use, caches it locally, and gives you a simple, typed interface plus first-class scripting and container support.
 
 ---
@@ -25,7 +25,7 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
 
 - [Scripts](#scripts)
   - [Usage](#usage)
-- [Synthea-CLI](#synthea-cli)
+- [Synthea.Cli](#synthea-cli)
   - [Table of Contents](#table-of-contents)
   - [Features](#features)
   - [Quick Start](#quick-start)
@@ -52,7 +52,7 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
 | Feature | Details |
 |---------|---------|
 | **Zero-install JAR** | Automatically fetches the newest `synthea-with-dependencies.jar` from GitHub releases and verifies its SHA-256 checksum. |
-| **Configurable cache** | Stores the JAR under `%LOCALAPPDATA%\synthea-cli` / `$XDG_CACHE_HOME/synthea-cli`; refresh anytime with `--refresh`. |
+| **Configurable cache** | Stores the JAR under `%LOCALAPPDATA%\Synthea.Cli` / `$XDG_CACHE_HOME/Synthea.Cli`; refresh anytime with `--refresh`. |
 | **Friendly flags** | `--state OH`, `--city "Columbus"`, `--output ./data`, `--seed 42`, `--initial-snapshot snap.json`, `--format FHIR` map directly to Synthea flags. |
 | **Portable** | Runs on Windows, macOS, Linux, containers—wherever .NET 8 + Java 17+ are available. |
 | **Docker image** | Multi-stage Dockerfile builds a slim runtime with OpenJDK 17 and publishes the tool. |
@@ -70,7 +70,7 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
 ### Install as a global tool
 
 ```bash
-dotnet tool install --global synthea-cli --version 0.2.0
+dotnet tool install --global Synthea.Cli --version 0.2.0
 ```
 
 ### Run
@@ -95,8 +95,8 @@ synthea run -o ./output --initial-snapshot snap.json --days-forward 30 --format 
 ### Clone & Build
 
 ```bash
-git clone https://github.com/Kmanley1/synthea-cli.git
-cd synthea-cli
+git clone https://github.com/Kmanley1/Synthea.Cli.git
+cd Synthea.Cli
 dotnet restore
 dotnet build
 dotnet run -- run -o ./out --population 5 --state AK
@@ -112,15 +112,15 @@ dotnet test --collect:"XPlat Code Coverage"
 ### Docker
 
 ```bash
-./build.sh                 # builds image synthea-cli:latest
+./build.sh                 # builds image Synthea.Cli:latest
 ./run.sh                   # runs CLI, mounts ./output as /data
 ```
 
 Manual example:
 
 ```bash
-docker build -t synthea-cli .
-docker run --rm -v "$PWD/out":/data synthea-cli            -- --state CA --population 100            # args after --
+docker build -t Synthea.Cli .
+docker run --rm -v "$PWD/out":/data Synthea.Cli            -- --state CA --population 100            # args after --
 ```
 
 

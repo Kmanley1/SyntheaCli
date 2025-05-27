@@ -1,6 +1,6 @@
-# Directory tree for `C:\_Template\Projects\_code\synthea-cli`
+# Directory tree for `C:\_Template\Projects\_code\Synthea.Cli`
 
-synthea-cli/
+Synthea.Cli/
 .github/
 └─ workflows/
 │   ├─ ci.yml

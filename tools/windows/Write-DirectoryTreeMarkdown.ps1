@@ -9,7 +9,7 @@
 
 .EXAMPLE
     # Include files as well
-    .\Write-DirectoryTreeMarkdown.ps1 -Path 'C:\_Template\Projects\_code\synthea-cli' -OutFile 'C:\_Template\Projects\_code\synthea-cli\docs\deliverables\project-structure.md' -IncludeFiles
+    .\Write-DirectoryTreeMarkdown.ps1 -Path 'C:\_Template\Projects\_code\Synthea.Cli' -OutFile 'C:\_Template\Projects\_code\Synthea.Cli\docs\deliverables\project-structure.md' -IncludeFiles
 #>
 
 [CmdletBinding()]
@@ -26,7 +26,7 @@ param(
 
 # ---- prepare ----------------------------------------------------------------
 $root = Resolve-Path -LiteralPath $Path
-$md   = [System.Collections.Generic.List[string]]::new()
+$md = [System.Collections.Generic.List[string]]::new()
 $md.Add("# Directory tree for ``$($root.Path)``")
 $md.Add("")
 
@@ -41,7 +41,7 @@ function Add-Line {
     )
     $prefix = ''
     if ($Depth -gt 0) {
-        $prefix = ('│   ' * ($Depth-1))
+        $prefix = ('│   ' * ($Depth - 1))
         $prefix += if ($IsLast) { '└─ ' } else { '├─ ' }
     }
     $line = $prefix + $Name

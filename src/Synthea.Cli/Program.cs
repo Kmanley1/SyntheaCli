@@ -1,4 +1,4 @@
-﻿// Program.cs  – entry point for synthea-cli
+﻿// Program.cs  – entry point for Synthea.Cli
 // namespace: Synthea.Cli
 
 using System.CommandLine;
