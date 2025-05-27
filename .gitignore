@@ -1,3 +1,6 @@
+# OS-specific files
+.DS_Store
+Thumbs.db
 # NuGet packages
 *.nupkg
 # Prune build artefacts and test results
@@ -62,13 +65,13 @@ mono_crash.*
 *.dbmdl
 *.bak
 *.backup
-*.log
+## (duplicate pattern removed)
 *.mdf
 *.ldf
 *.ndf
 
 # Visual Studio profiler
-*.psess
+## (duplicate pattern removed)
 *.vsp
 *.vspx
 *.sap
@@ -220,23 +223,6 @@ __pycache__/
 
 
 
-# Visual Studio 6 build log
-*.plg
-
-# Visual Studio 6 workspace options file
-*.opt
-
-# Visual Studio 6 auto generated workspace file (contains which files were open etc.)
-*.vbw
-
-# Visual Studio LightSwitch build output
-**/*.HTMLClient/GeneratedArtifacts
-**/*.DesktopClient/GeneratedArtifacts
-**/*.DesktopClient/ModelManifest.xml
-**/*.Server/GeneratedArtifacts
-**/*.Server/ModelManifest.xml
-**/*.Server/Web.Config
-**/*.Client/generated HTML
 
 # Guidance Automation Toolkit
 *.gpState
