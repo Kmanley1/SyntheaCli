@@ -1,12 +1,12 @@
-# Codex Prompt – VS Solution & VS Code Organization Analysis
+# Codex Prompt – VS Solution & VS Code Organization Analysis
 
 *Last Updated (UTC): 2025-05-27*
 
 ---
 
-## 1  Background / Context
+## 1  Background / Context
 
-This task evaluates our Visual Studio **solution**, VS Code **workspace**, **and repository ignore rules** against commonly accepted .NET project-layout standards.
+This task evaluates our Visual Studio **solution**, VS Code **workspace**, **and repository ignore rules** against commonly accepted .NET project‑layout standards.
 
 **Inputs provided to Codex**
 
@@ -19,23 +19,23 @@ This task evaluates our Visual Studio **solution**, VS Code **workspace**, **and
 
 > **PDF fallback rule**: If the PDF **or** `pdf-highlights.md` cannot be read, **do not guess or invent its contents**. Simply note in the final document: “*(Best-practices PDF could not be accessed; PDF-based comparison omitted.)*”. All recommendations must then rely on the current structure plus broadly accepted .NET conventions.
 
-## 2  Task / Goal
+## 2  Task / Goal
 
 1. **Analyse** the current repo layout **and `.gitignore` patterns**.  
 2. **Compare** them to the available best-practice material (PDF or highlights).  
 3. **Produce** the deliverables listed below.
 
-## 3  Deliverables (save in `docs/deliverables/`)
+## 3  Deliverables (save in `docs/deliverables/`)
 
-| # | File                                      | Description                                                                                                                                                                                                                                                    |
-| - | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1 | `vs-solution-organization-guidelines.md`  | Best-practice guideline following §4 outline.                                                                                                                                                                                                                  |
+| # | File                                      | Description |
+| - | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 | `vs-solution-organization-guidelines.md`  | Best-practice guideline following §4 outline. |
 | 2 | `vs-solution-organization-guidelines.pdf` | Generated with **pandoc**:<br>`pandoc vs-solution-organization-guidelines.md -o vs-solution-organization-guidelines.pdf`.<br>If `pandoc` is unavailable, **do not create a PDF**. Instead return the literal line **`PDF-SKIPPED`** in the output order below. |
 | 3 | `project-structure-recommendations.md`    | Gap-analysis table (issues ➜ fixes). **Include a subsection that lists any missing, redundant, or mis-scoped patterns in `.gitignore`, with recommended changes.** |
 
-> **Versioning**: If any filename already exists, append **`-v{N}`** (*plain integer, e.g., `-v2`, `-v3`*).
+> **Versioning**: Always overwrite `project-structure-recommendations.md`—rely on Git history to track revisions. For the other deliverables, if a filename already exists, append **`-v{N}`** (plain integer, e.g., `-v2`, `-v3`).
 
-## 4  Required Content Structure (guideline .md)
+## 4  Required Content Structure (guideline .md)
 
 ### 4.1 Sections
 
@@ -65,9 +65,9 @@ This task evaluates our Visual Studio **solution**, VS Code **workspace**, **and
 * Use **Markdown tables** with a header row (`| --- |`) and **no hard wraps** inside a row.  
 * Indent directory tree with **two spaces per level**.
 
-## 5  Writing Guidelines
+## 5  Writing Guidelines
 
-* Target ≈ 3 000 words across sections 1–11; References (if present) are extra.  
+* Target ≈ 3 000 words across sections 1–11; References (if present) are extra.  
 * Use bullet lists over prose where practical; keep paragraphs ≤ 4 sentences.  
 * ONE blank line between major sections; *no* blank lines between bullets or table rows.  
 * Encode Markdown in **UTF-8 (no BOM)**.  
@@ -75,7 +75,7 @@ This task evaluates our Visual Studio **solution**, VS Code **workspace**, **and
 * **Do not** cite or speculate about best practices beyond provided material; if PDF missing, explicitly note omission.  
 * No shell, PowerShell, or code snippets except the single `pandoc` command shown.
 
-## 6  Output to User
+## 6  Output to User
 
 1. **Git staging example** — include these two lines verbatim (Codex does not execute them):
 

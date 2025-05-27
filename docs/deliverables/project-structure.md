@@ -26,12 +26,16 @@ docs/
 │   ├─ on-going-scorecard-metrics.md
 │   ├─ project-structure-recommendations-v2.md
 │   ├─ project-structure-recommendations-v3.md
+│   ├─ project-structure-recommendations-v4.md
+│   ├─ project-structure-recommendations-v5.md
 │   ├─ project-structure-recommendations.md
 │   ├─ project-structure.md
 │   ├─ prompt-generator.md
 │   ├─ roadmap.md
 │   ├─ vs-solution-organization-guidelines-v2.md
 │   ├─ vs-solution-organization-guidelines-v3.md
+│   ├─ vs-solution-organization-guidelines-v4.md
+│   ├─ vs-solution-organization-guidelines-v5.md
 │   └─ vs-solution-organization-guidelines.md
 ├─ prompts/
 │   ├─ codex-task-template-ai-change-log.md
@@ -109,13 +113,14 @@ tests/
 │   ├─ ProgramRefactorTests.cs
 │   └─ Synthea.Cli.UnitTests.csproj
 tools/
-└─ windows/
+├─ windows/
 │   ├─ temp/
 │   │   └─ rename-implemented.ps1
 │   ├─ install-vscode-extensions.ps1
 │   ├─ nuget-helper.ps1
 │   ├─ synthea-cli-create.ps1
 │   └─ Write-DirectoryTreeMarkdown.ps1
+└─ setup.sh
 .gitattributes
 .gitignore
 AGENTS.md
@@ -126,6 +131,5 @@ Directory.Build.props
 LICENSE
 README.md
 scorecard.json
-setup.sh
 synthea-cli.code-workspace
 Synthea.Cli.sln
