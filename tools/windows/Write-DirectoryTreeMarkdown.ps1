@@ -5,11 +5,11 @@
 
 .EXAMPLE
     # List only folders
-    .\Write-DirectoryTreeMarkdown.ps1 -Path 'C:\Projects' -OutFile '.\Tree.md'
+    .\Write-DirectoryTreeMarkdown.ps1 -Path 'C:\_Template\Projects\_code\synthea-cli' -OutFile '.\Tree.md'
 
 .EXAMPLE
     # Include files as well
-    .\Write-DirectoryTreeMarkdown.ps1 -Path 'C:\Projects' -OutFile '.\Tree-WithFiles.md' -IncludeFiles
+    .\Write-DirectoryTreeMarkdown.ps1 -Path 'C:\_Template\Projects\_code\synthea-cli' -OutFile 'C:\_Template\Projects\_code\synthea-cli\docs\deliverables\project-structure.md' -IncludeFiles
 #>
 
 [CmdletBinding()]
@@ -37,8 +37,7 @@ function Add-Line {
         [int]   $Depth,
         [string]$Name,
         [bool]  $IsDir,
-        [bool]  $IsLast = $false,
-        [string]$Comment = ''
+        [bool]  $IsLast = $false
     )
     $prefix = ''
     if ($Depth -gt 0) {
@@ -46,7 +45,6 @@ function Add-Line {
         $prefix += if ($IsLast) { '└─ ' } else { '├─ ' }
     }
     $line = $prefix + $Name
-    if ($Comment) { $line += '    # ' + $Comment }
     $md.Add($line)
 }
 
@@ -65,28 +63,7 @@ function Walk {
         $entry = $entries[$i]
         $isDir = $entry.PSIsContainer -eq $true
         $isLast = ($i -eq $entries.Count - 1)
-        $comment = ''
-        # Optionally, add comments for known files/folders (customize as needed)
-        switch -Wildcard ($entry.Name) {
-            '.gitattributes' { $comment = 'enforce LF for shell scripts' }
-            'synthea-cli.code-workspace' { $comment = 'VS Code workspace file' }
-            'setup.sh' { $comment = 'CI / Codex build script' }
-            'Architecture.md' { $comment = 'CLI flow diagrams & overview' }
-            'synthea-cli-create.ps1' { $comment = 'helper to scaffold new CLI repo' }
-            'install-vscode-extensions.ps1' { $comment = '' }
-            'Synthea.Cli.sln' { $comment = 'Visual Studio solution' }
-            'Program.cs' { $comment = 'System.CommandLine entry point' }
-            'JarManager.cs' { $comment = 'JAR download & cache helper' }
-            'Synthea.Cli.csproj' { $comment = '' }
-            'CliTests.cs' { $comment = '' }
-            'JarManagerTests.cs' { $comment = '' }
-            'ProgramHandlerTests.cs' { $comment = '' }
-            'Synthea.Cli.UnitTests.csproj' { $comment = '' }
-            'setup.sh' { $comment = 'thin wrapper for Codex harness' }
-            'synthea-output' { $comment = 'default data output (git-ignored)' }
-            default { $comment = '' }
-        }
-        Add-Line -Depth $Depth -Name ($isDir ? ($entry.Name + '/') : $entry.Name) -IsDir:$isDir -IsLast:$isLast -Comment:$comment
+        Add-Line -Depth $Depth -Name ($isDir ? ($entry.Name + '/') : $entry.Name) -IsDir:$isDir -IsLast:$isLast
         if ($isDir) {
             Walk -Current $entry.FullName -Depth ($Depth + 1)
         }
