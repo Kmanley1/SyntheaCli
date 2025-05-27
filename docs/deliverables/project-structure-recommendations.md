@@ -1,14 +1,14 @@
 # Project Structure Recommendations
 
-The table below summarizes structural issues found in the `synthea-cli` repository and suggested improvements. The best-practices PDF was not accessible, so recommendations are drawn from community standards and the current layout.
+The following table highlights structural issues observed in the `synthea-cli` repository and proposes actionable improvements. The best-practices PDF could not be parsed, so suggestions are derived from the repository tree and community conventions.
 
 | Issue | Current Path | Recommended Change | Rationale |
 | --- | --- | --- | --- |
-| Build artifact committed | `nupkgs/synthea-cli.0.1.0.nupkg` lines 70‑72 in `project-structure.md` | Remove directory and ignore via `.gitignore` | Prevents repository bloat |
-| Stale placeholder in solution | `tests/placeholder.txt` reference around line 10 of `Synthea.Cli.sln` | Delete entry | Avoids confusion and warnings |
-| Duplicate setup scripts | `run/setup.sh` and root `setup.sh` lines 73‑74 and 114 | Consolidate under `tools/` | Single onboarding command |
-| Minimal workspace file | `synthea-cli.code-workspace` line 115 | Expand with `.vscode/` tasks, launch, and extensions | Aligns editor experience |
-| No `CODEOWNERS` file | Not present in repo tree | Create one mapping maintainers | Clarifies responsibility |
-| Numerous draft docs | Many entries under `docs/deliverables/` lines 10‑22 | Archive or move finalized docs to `docs/` | Reduces clutter |
-| Committed test results | `tests/Synthea.Cli.IntegrationTests/TestResults/` lines 85‑88 | Remove and add to `.gitignore` | Keeps history clean |
-| Scripts scattered | `tools/windows/` plus root-level scripts lines 100‑106 | Move under `tools/` or `build/` with clear names | Easier discovery |
+| Placeholder file referenced in solution | `tests/placeholder.txt` in `Synthea.Cli.sln` lines 8‑16【F:Synthea.Cli.sln†L8-L16】 | Remove reference and delete file | Eliminates warnings and clarifies project contents |
+| Committed test results | `tests/Synthea.Cli.IntegrationTests/TestResults/` folder shown in project tree lines 91‑93【F:docs/deliverables/project-structure.md†L90-L97】 | Delete folder and add path to `.gitignore` | Keeps repo clean and prevents accidental diffs |
+| Duplicate setup script | `setup.sh` at repo root and reference under `run/` within solution lines 21‑24【F:Synthea.Cli.sln†L21-L24】 | Consolidate script under `tools/` and update docs | Provides a single onboarding command |
+| Minimal VS Code workspace | `synthea-cli.code-workspace` lacks tasks or settings【F:synthea-cli.code-workspace†L1-L5】 | Expand with `.vscode/` tasks, launch configs, and recommended extensions | Ensures consistent development environment |
+| Numerous draft docs | Many files listed under `docs/deliverables/` lines 16‑83【F:docs/deliverables/project-structure.md†L15-L83】 | Archive or prune outdated drafts | Simplifies documentation and reduces clutter |
+| Windows-only scripts | `tools/windows/` contains helper scripts lines 105‑112【F:docs/deliverables/project-structure.md†L105-L112】 | Provide cross-platform equivalents or document OS requirements | Broadens contributor base |
+| Integration tests failing | `dotnet test` output reports missing Synthea CLI wrapper【f3d9a4†L1-L11】 | Provide download script or mock wrapper for tests | Achieves reliable test runs |
+| Missing devcontainer | No `.devcontainer` folder present | Add container configuration for reproducible setups | Makes onboarding smoother |
