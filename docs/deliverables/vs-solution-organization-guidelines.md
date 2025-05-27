@@ -1,202 +1,119 @@
 ## 1 Overview
-The `synthea-cli` repository is a .NET command-line tool that wraps the Synthea project. It contains C# source under `src/`, unit and integration tests under `tests/`, scripts under `tools/`, and documentation under `docs/`. The root solution `Synthea.Cli.sln` references these projects and scripts, while a basic VS Code workspace file provides a starting point for development. This guideline summarizes established conventions for structuring Visual Studio solutions and VS Code workspaces so that repositories like this remain scalable and easy to navigate. The provided best-practices PDF could not be accessed; therefore, comparisons rely on the repository tree and commonly accepted .NET standards.
+The `synthea-cli` repository houses a .NET command-line tool built around the Synthea project. It offers a wrapper to generate synthetic patients through a simple interface. The repository contains source code, unit and integration tests, scripts, and extensive documentation. Developers primarily work with `Synthea.Cli.sln`, which references the production code in `src/` and accompanying tests in `tests/`. Build helpers and PowerShell utilities live under `tools/`, while `docs/` collects guides and design notes. The purpose of this guideline is to outline best practices for organizing a Visual Studio solution and VS Code workspace so contributors can navigate the codebase efficiently, minimize merge conflicts, and keep the project maintainable. The official best-practices PDF could not be accessed; the recommendations here rely on the repository tree and broadly accepted .NET conventions.
 
 ## 2 Why Organization Matters
-- Predictable layout shortens onboarding time for new contributors.
-- Clear folder separation simplifies continuous integration configuration and ensures reproducible builds.
-- Isolated projects with well-defined dependencies minimize side effects across components and enable parallel feature work.
-- Consistent workspace settings guarantee similar tooling and editor behavior across the team, preventing "it works on my machine" problems.
+- **Faster Onboarding:** A predictable folder layout helps new contributors find build scripts, configuration files, and documentation quickly.
+- **Consistent Builds:** Aligning local development with the CI pipeline ensures that builds are reproducible regardless of environment.
+- **Reduced Coupling:** Separating production code, tests, and utilities makes dependencies obvious and prevents unrelated changes from leaking between components.
+- **Streamlined Code Review:** Clear organization simplifies pull requests. Reviewers can easily identify where changes belong and verify that no extraneous files were modified.
 
 ## 3 Directory & File Layout
+```text
+repo-root/
+  build/                       # CI scripts and packaging helpers
+  docs/                        # Project documentation and ADRs
+  src/
+    Synthea.Cli/               # Application source
+      Synthea.Cli.csproj
+  tests/
+    Synthea.Cli.UnitTests/     # Unit tests
+      Synthea.Cli.UnitTests.csproj
+    Synthea.Cli.IntegrationTests/  # Integration tests
+      Synthea.Cli.IntegrationTests.csproj
+  tools/                       # Utility scripts and tools
+    windows/
+      install-vscode-extensions.ps1
+  .vscode/                     # Shared VS Code settings
+    launch.json
+    settings.json
+    tasks.json
+    extensions.json
+  Synthea.Cli.sln
+  README.md
+  CONTRIBUTING.md
+  CODEOWNERS
 ```
-/ (repo root)
-  ├─ src/
-  │   └─ ProjectName/
-  │       ├─ ProjectName.csproj
-  │       └─ ... source files ...
-  ├─ tests/
-  │   ├─ ProjectName.UnitTests/
-  │   │   └─ ProjectName.UnitTests.csproj
-  │   └─ ProjectName.IntegrationTests/
-  │       └─ ProjectName.IntegrationTests.csproj
-  ├─ build/
-  │   └─ scripts and CI helpers
-  ├─ tools/
-  │   └─ cross-platform utilities
-  ├─ docs/
-  │   └─ project documentation
-  ├─ .vscode/
-  │   └─ recommended settings and tasks
-  ├─ .gitignore
-  ├─ Directory.Build.props
-  ├─ Project.sln
-  └─ README.md
-```
-The repository tree excerpt in `docs/deliverables/project-structure.md` lines 1‑22 shows the current folder hierarchy with `.github`, `.vscode`, `build`, and `docs` directories at the root【F:docs/deliverables/project-structure.md†L1-L22】. Lines 110‑124 highlight additional root items such as `CODEOWNERS`, `CONTRIBUTING.md`, and the solution file【F:docs/deliverables/project-structure.md†L110-L124】.
+This structure places all source code under `src/` and tests under `tests/`. Build scripts are isolated in `build/` or `tools/`, and documentation has a dedicated `docs/` folder. The `.vscode/` directory holds shared editor configuration so all developers run the same tasks. Keeping the solution file at the root signals that it is the canonical entry point.
 
 ## 4 Solution (.sln) Best Practices
-- Keep a single authoritative solution at the repository root named after the product, e.g., `Synthea.Cli.sln`.
-- Use solution folders to group related projects or helper scripts, not arbitrary files. Current lines 8‑16 of `Synthea.Cli.sln` show a `tests` folder referencing `tests/placeholder.txt` that no longer exists【F:Synthea.Cli.sln†L8-L16】; stale entries like this should be removed.
-- Include both production and test projects to allow building and testing from the solution.
-- Maintain consistent configurations (Debug/Release) for all projects.
-- Avoid referencing generated files or user-specific settings in the solution.
-- Order project references logically (source first, then test projects) for easier browsing.
+A single solution file should be located at the repository root. Its name should match the repository (e.g., `Synthea.Cli.sln`). Every project that builds the product, runs tests, or generates tooling should be included. Solution folders may group projects by domain or function, but they should not mirror the directory structure exactly. Keep solution items to essential files only—scripts run during the build, key documentation, or configuration files. Remove any stale references, as they cause warnings in Visual Studio and confuse new contributors. For large codebases, solution filter files (`.slnf`) can provide a subset of projects to load quickly, but they should never replace the primary solution.
 
 ## 5 Project (.csproj) Best Practices
-- Place each project in its own folder under `src/` or `tests/`. Files at `docs/deliverables/project-structure.md` lines 84‑104 demonstrate this layout with `src/Synthea.Cli` and test projects under `tests/`【F:docs/deliverables/project-structure.md†L84-L104】.
-- Use SDK-style projects and keep property groups minimal. Shared settings belong in `Directory.Build.props`.
-- Explicitly set `RootNamespace` and `AssemblyName` if they differ from the folder name.
-- Keep output paths consistent via `$(BaseOutputPath)` or `$(OutputPath)` conventions.
-- Do not commit `bin/`, `obj/`, or other build outputs. Ensure `.gitignore` covers them.
-- Reference NuGet packages centrally when possible to avoid version drift across projects.
+Each project should reside in its own folder under `src/` or `tests/`. SDK-style project files are concise and allow properties to inherit from `Directory.Build.props`. Explicitly set `RootNamespace` and `AssemblyName` so the generated namespaces are predictable. Keep project references straightforward and avoid cyclic dependencies. Output paths should be relative to the repository root (for example, `bin/Debug/net8.0/`). Generated code, intermediate artifacts, and packages should not be committed to version control. Instead, rely on the build pipeline to produce NuGet packages or other outputs. If multiple projects share common settings or analyzers, configure them in `Directory.Build.props` so each project stays minimal.
 
 ## 6 VS Code Workspace Best Practices
-- Provide a `.vscode/` directory with launch and task definitions. The repository contains tasks for `dotnet build` and `dotnet test` as shown in `.vscode/tasks.json` lines 1‑19【F:.vscode/tasks.json†L1-L19】.
-- Capture recommended extensions to streamline onboarding. `.vscode/extensions.json` lists C# and Markdown extensions on lines 1‑8【F:.vscode/extensions.json†L1-L8】.
-- Maintain workspace settings in `settings.json` to enforce formatting conventions and file exclusions.
-- Align tasks with the commands used in CI so developers can reproduce pipeline behavior locally.
-- If using containers or remote environments, include a devcontainer configuration and document its usage.
+The `.vscode/` directory plays an important role in aligning developers’ tools. The `extensions.json` file should list recommended extensions such as `ms-dotnettools.csharp` for C# support and `davidanson.vscode-markdownlint` for Markdown style checking. `tasks.json` can define `build` and `test` tasks that call `dotnet build` and `dotnet test`, mirroring the commands run in CI. `launch.json` should include at least one debugging profile that points to the built CLI assembly. Settings in `settings.json`—for example enabling `editor.formatOnSave`—help keep code style consistent. Because these files are checked in, all team members share the same baseline configuration without needing to manually tweak their environment. Optional workspace settings can also be captured in `synthea-cli.code-workspace`; however, with `.vscode/` present, the workspace file may be redundant unless it aggregates multiple folders.
 
 ## 7 Onboarding Essentials
-- **README** – Provide clear build and usage instructions. The root README is listed around line 120 of the directory tree excerpt【F:docs/deliverables/project-structure.md†L110-L124】.
-- **CONTRIBUTING** – Describe how to file issues, create pull requests, and follow coding standards.
-- **CODEOWNERS** – Map maintainers to key paths so reviews reach the right people.
-- **Architecture Diagrams** – Visuals in the `docs/` folder speed up understanding of how the tool interacts with Synthea and where extension points exist.
-- **Setup Scripts** – Supply a single setup script or set of instructions for installing dependencies and verifying the environment. Keep it under `tools/` or `build/` so new contributors find it quickly.
+Documentation is central to a good first impression. The repository should contain a thorough `README.md` describing the tool’s purpose, prerequisites (such as .NET SDK version), and instructions for running a sample generation command. `CONTRIBUTING.md` explains the workflow for submitting changes, including branching strategy, commit message style, and how to run tests. A `CODEOWNERS` file specifies the maintainers responsible for reviewing pull requests in various areas. Architecture decision records (ADRs) live under `docs/architecture` and chronicle major design choices. Diagrams or flowcharts illustrating the CLI’s interaction with the Synthea JAR aid new contributors in understanding the high-level architecture. Together, these resources drastically reduce ramp-up time.
 
-## 8 Anti-Patterns to Avoid
+## 8 Ignore-File (.gitignore) Best Practices
+An effective `.gitignore` prevents noisy diffs and protects sensitive information. Organize patterns in logical sections with comments for readability. The file should ignore common build artifacts such as `bin/`, `obj/`, `TestResults/`, and generated logs. IDE-specific directories (`.vs/`, `.vscode/` when local settings are not shared) should also be listed. Temporary user files like `*.user`, `*.suo`, and `*.userprefs` must be excluded. Avoid referencing files that no longer exist—for example, the current `.gitignore` includes two PDF file paths that are no longer part of the repository. Duplicated patterns (e.g., multiple entries for `node_modules/` or `.vscode/`) should be consolidated to keep the file concise. Comments above each section help future maintainers understand why a pattern is present.
+
+## 9 Anti-Patterns to Avoid
 | Anti-Pattern | Why It Hurts | Better Alternative |
 | --- | --- | --- |
-| Committing build outputs | Bloats history and causes merge conflicts | Ignore `bin/`, `obj/`, and other artifacts |
-| Multiple overlapping solutions | Confuses build pipeline | Maintain one canonical solution file |
-| Scattered scripts across many folders | Hard to discover and maintain | Centralize scripts in `tools/` or `build/` |
-| Missing workspace settings | Developers get inconsistent behavior | Provide `.vscode/` with tasks and extensions |
-| Referencing nonexistent files in solution | Breaks IDE builds | Remove stale entries like `tests/placeholder.txt` |
-| Keeping tests outside solution | New developers might miss them | Include unit and integration tests in the `.sln` |
-| Using inconsistent project naming | Causes confusion about namespaces | Match folder names, project names, and namespaces |
-| No CONTRIBUTING guide | Contributes to haphazard PRs | Document contribution process and code style |
+| Committing build outputs such as `bin/` or NuGet packages | Bloats history and causes merge conflicts | Ignore these directories and produce packages via CI |
+| Maintaining multiple solution files without clear purpose | Confuses developers about which file to open | Keep one solution at the repository root and consider solution filters for subsets |
+| Mixing source code and scripts in the same folder | Obscures boundaries and complicates search | Keep source projects under `src/` and scripts under `tools/` or `build/` |
+| Omitting shared editor configuration | Developers configure tasks differently, leading to "it works on my machine" problems | Provide `.vscode/` with tasks, launch profiles, and extensions |
+| Duplicate or outdated `.gitignore` patterns | Hard to maintain and may hide important files | Review `.gitignore` periodically and remove obsolete entries |
+| Hard-coded paths in scripts or tasks | Breaks on different operating systems or user setups | Use relative paths and environment variables |
 
-## 9 Die-Hard Requirements
-- Repository and solution names should use PascalCase and match each other.
-- No secrets or personal data should be committed anywhere; use environment variables or configuration templates instead.
-- Builds must be reproducible via `dotnet build` at the repository root without extra steps.
-- Unit tests and integration tests must run identically locally and in CI. The `.vscode/tasks.json` file ensures local commands mirror the pipeline.
-- Maintain a single authoritative solution file; all projects should be referenced there.
-- Source must compile on the latest supported .NET SDK without warnings.
+## 10 Die-Hard Requirements
+- Repository and solution names must match in PascalCase (e.g., `Synthea.Cli`).
+- No secrets or sensitive data should ever be committed. Use environment variables or local configuration files outside the repository.
+- The project must build reproducibly via `dotnet build` or the provided `build` task at the root, without additional steps.
+- Unit and integration tests run with `dotnet test` must succeed both locally and in CI.
+- The root solution file is the single source of truth for which projects compose the CLI and its tests.
+- `.gitignore` must exclude standard build artifacts and personal IDE files while remaining concise and up to date.
+- Documentation should explain how to reproduce a build and where to place additional tooling.
 
-## 10 Gap Analysis & Recommendations
-| Issue | Current Path | Recommended Change | Rationale |
+## 11 Gap Analysis & Recommendations
+| Issue | Current Path / Pattern | Recommended Change | Rationale |
 | --- | --- | --- | --- |
-| Stale solution reference | `tests/placeholder.txt` in `Synthea.Cli.sln` lines 8‑16 | Remove the reference | Prevents confusion and warnings |
-| Integration test results committed | `tests/Synthea.Cli.IntegrationTests/TestResults/` lines 91‑93 of `project-structure.md` | Delete folder and add to `.gitignore` | Keep repository history clean |
-| Setup scripts duplicated | `setup.sh` is at repo root and referenced under `run/` via the solution file | Consolidate under `tools/` | Provide a single entry point |
-| Minimal VS Code workspace | `synthea-cli.code-workspace` lacks settings lines 1‑5 | Expand workspace or use `.vscode/` folder exclusively | Standardize editor experience |
-| Overabundance of draft docs | Many files under `docs/deliverables/` lines 17‑83 | Archive or prune | Streamlines onboarding materials |
-| Unclear ownership | While `CODEOWNERS` exists at line 116 of the tree, maintainers may not be mapped by path | Update with explicit entries | Clarifies review responsibility |
-| Scripts under `tools/windows/` only | Lines 105‑110 show Windows-specific scripts | Provide cross-platform equivalents or document OS requirements | Broadens contributor base |
-| Test results failing due to missing wrapper | Recent `dotnet test` log shows integration tests failing because `synthea` jar is not available【f3d9a4†L1-L11】 | Stub out or provide test assets | Ensure tests pass consistently |
+| Duplicate `node_modules/` patterns | Lines 221 and 272 in `.gitignore` list the same folder twice【F:.gitignore†L221-L272】 | Keep a single entry under the Node section | Simplifies maintenance and reduces file length |
+| Duplicate `.vscode/` ignores | The file lists `.vscode/*` at line 159 and again at line 335 with more specific allow rules【F:.gitignore†L159-L340】 | Remove the earlier generic entry and keep the allowlist version | Prevents accidental exclusion of shared settings |
+| Duplicate `.vs/` patterns | `.vs/` appears at lines 78 and 309【F:.gitignore†L78-L309】 | Retain one entry near the Visual Studio cache section | Clarity and less churn |
+| Outdated PDF references | Lines 352-353 ignore PDFs not present in `docs/reference`【F:.gitignore†L350-L353】 | Delete these lines | Keep ignore file scoped to actual repository files |
+| Minimal workspace file | `synthea-cli.code-workspace` only defines folders without tasks【F:synthea-cli.code-workspace†L1-L8】 | Either extend it with meaningful settings or rely solely on `.vscode/` | Avoids confusion about configuration sources |
+| Numerous document drafts | `project-structure.md` shows many old deliverables under `docs/deliverables`【F:docs/deliverables/project-structure.md†L15-L35】 | Archive or remove outdated versions, keeping only current docs | Makes it easier to find definitive guidance |
+| Setup script at root | `setup.sh` is located at the repository root and referenced by the tree【F:docs/deliverables/project-structure.md†L122-L131】 | Move this script into `tools/` and update documentation | Centralizes onboarding commands |
+| Two patterns for test results | `.gitignore` lists `**/TestResults/` and `[Tt]est[Rr]esult*/` separately【F:.gitignore†L3-L105】 | Keep one well-scoped pattern such as `**/TestResults/` | Avoid confusion and reduce file size |
 
-## 11 References
-- Repository tree excerpt from `docs/deliverables/project-structure.md` lines 1‑22 and lines 84‑124 show the overall layout.
-- Solution file section from `Synthea.Cli.sln` lines 8‑16 highlights a stale placeholder reference.
-- VS Code configuration lines from `.vscode/extensions.json` and `.vscode/tasks.json` demonstrate current workspace settings.
-- Test execution output confirming failures due to missing wrapper appears around lines in the terminal log.
+Additional notes on repository context: the solution interacts with the Java-based Synthea generator. Managing the dependencies correctly requires clear documentation about where to obtain the JAR file and how to run integration tests. When organizing the repository, it is beneficial to keep the Java artifacts separate from the .NET build output so that cross-platform developers can set up quickly. The CLI itself acts as a thin wrapper, so future maintainers may extend it with new commands or options. A well-structured solution will make such extensions straightforward.
 
-### Additional Guidance on Solution Structure
-A well-formed solution file helps teams navigate large codebases. Group projects in solution folders that mirror the physical folder structure so developers can quickly locate a project both in Explorer and on disk. Avoid deeply nested hierarchies; two levels of folders are usually sufficient. When new projects are added, update the solution immediately so all developers receive consistent builds.
+A consistent layout also improves automation. Build pipelines rely on known paths to restore packages, compile projects, and execute tests. When those paths are stable, the CI configuration remains simple, and new pipelines—such as release or benchmarking workflows—can reuse the same scripts with minor adjustments.
 
-Consider including script files or documentation that assists with common developer tasks. In `Synthea.Cli.sln`, solution items point to helper scripts under the `scripts` folder, as shown on lines 13‑16【F:Synthea.Cli.sln†L13-L16】. This practice is useful when scripts are integral to the build or release process. However, outdated references should be pruned to avoid confusion.
+Beyond team onboarding, good organization boosts long-term maintainability. When older contributors leave, new developers can rely on the folder structure and naming conventions to decipher which projects correspond to which features. Documentation that lives next to the code, such as design diagrams or architecture notes, helps preserve context that would otherwise be lost. Over time the project may accumulate new modules, and having a clear pattern for adding them—complete with tests and scripts—reduces the likelihood of ad-hoc structures.
+When configuring solution folders, prefer logical groupings over mirroring disk paths. For instance, group all test projects under a solution folder named `tests`. Shared utilities or sample projects might go under `examples`. Avoid placing non-existent placeholder items in the solution because Visual Studio attempts to load them, resulting in unnecessary warnings. Periodically check the solution file into source control after adding or removing projects so that team members stay in sync.
 
-### Details on Project Layout
-For each project, maintain a predictable substructure. Common folders within a project include `Properties` for assembly metadata, `Models` for domain entities, `Services` for business logic, and `CommandLine` or `Cli` for entry points. Keeping these internal conventions consistent means developers can infer where new classes belong.
+For individual projects, adopt a consistent naming convention. Production projects live under `src/ProjectName/ProjectName.csproj`, while their corresponding tests live under `tests/ProjectName.UnitTests/ProjectName.UnitTests.csproj`. Integration tests can use a similar pattern. This convention allows glob patterns in CI scripts to discover and run all tests without manually updating the pipeline when new modules are added. If a project is experimental or unsupported, consider placing it under a separate folder such as `samples/` to signal its status.
 
-Tests should mirror the layout of their corresponding production projects. For example, if a class resides in `src/Synthea.Cli/Services/`, its unit test might be found in `tests/Synthea.Cli.UnitTests/Services/`. Parallel structure improves discoverability and helps identify gaps in coverage. Integration tests can be separated under a folder like `tests/Synthea.Cli.IntegrationTests/` to distinguish them from unit tests.
+The VS Code workspace can include additional tasks beyond build and test. For example, a task may download the Synthea JAR or other dependencies. Another task might run code formatters or static analyzers. Publishing these tasks ensures all developers run the same steps before committing. When customizing `launch.json`, use variables like `${workspaceFolder}` rather than absolute paths so that the configuration works on any machine. If your repository uses a dev container, store the `.devcontainer` folder at the root and reference it in your workspace settings.
 
-### Shared Build Settings
-Centralizing build settings in `Directory.Build.props` avoids duplication across projects. Common version numbers, analyzers, `Nullable` state, or `TreatWarningsAsErrors` can be defined once. If certain projects diverge from defaults, use conditional `PropertyGroup` sections. Shared targets or tasks can be placed in `Directory.Build.targets` for advanced scenarios, although simplicity is preferred.
+Onboarding documentation benefits from real-world examples. Provide a copy-paste command to run the CLI with typical parameters. Mention how to clean up generated data or where to store large temporary files outside the repo. Include troubleshooting tips for common issues, such as missing Java or insufficient memory. When you add features, update the documentation so that historical references do not mislead new contributors.
 
-### Handling Third-Party Tools
-The repository includes a `tools/windows/` folder with PowerShell scripts. If cross-platform support is needed, provide platform-neutral alternatives using PowerShell Core or bash. Document expected prerequisites in the README. Scripts that fetch external dependencies, like the Synthea JAR, should verify checksums and support offline operation where possible to improve reproducibility.
+`.gitignore` should evolve alongside the project. As new tools or directories appear, add patterns with clear comments. For example, if you use a coverage tool that outputs to `coverage/`, place that pattern near the test results section. Organize entries by category—user files, build outputs, logs, IDE artifacts—so future maintainers can scan quickly. Remove obsolete patterns once the referenced files disappear to avoid confusion.
 
-### Recommended Workspace Enhancements
-Beyond `tasks.json` and `extensions.json`, consider adding problem matchers for custom tools so that build errors appear in the VS Code Problems pane. The `launch.json` file can define debugging profiles for both the CLI tool and test projects, allowing developers to step through code without manual configuration. Settings such as `dotnet.defaultSolution` ensure the correct solution opens automatically when the workspace loads.
+The table below summarizes observed gaps between the current repository and the practices described above. Addressing these items will help the project scale and minimize friction for future contributors.
 
-### Importance of Clear Documentation
-Comprehensive documentation pays dividends as the project grows. The `docs/` directory already hosts architectural references and research papers. Create an `index.md` or README within `docs/` summarizing the available documents so new contributors know where to start. Keep high-level diagrams under version control (e.g., PNG or PlantUML sources) and reference them from the main README. When decisions change, update diagrams alongside the code to avoid stale knowledge.
+Adhering to these die-hard requirements fosters reliability across the life of the project. Naming the repository and solution consistently helps external tooling—such as NuGet packaging scripts or deployment pipelines—locate the correct build artifacts. Guarding against secrets prevents accidental leaks of credentials and ensures compliance with security policies. Reproducible builds mean that a developer or automated system can pull the repository at a tag and produce identical binaries every time, which is essential for traceability. Tests run in both CI and local environments detect regression before changes reach production. Declaring a single authoritative solution avoids the confusion that arises when multiple solution files diverge. Finally, an up-to-date `.gitignore` protects the repository from noise, letting diffs focus on real code changes.
 
-### Effective Use of Git
-Commit history should reflect logical units of work. Use `.gitignore` to exclude generated files, logs, and user-specific settings. The presence of `.gitignore` at line 114 in the directory tree demonstrates that some ignore rules exist, but ensure test result folders such as those under `tests/Synthea.Cli.IntegrationTests/TestResults/` are also excluded to prevent accidental commits. Branch naming conventions and pull-request templates further streamline collaboration.
+Even with a solid baseline, teams should revisit these practices periodically. As tooling evolves, new recommended extensions might appear. The .NET SDK version might change, requiring an update to `global.json` or the CI pipeline. When new directories or build steps emerge, update the `.gitignore` accordingly. Continuous improvement keeps the repository manageable as the project grows.
+A well-maintained solution file also improves discoverability for IDE users. Visual Studio and VS Code's C# tools rely on the solution to understand project relationships. By loading the solution, developers can navigate to any project or file with minimal friction. Keeping the file under version control ensures everyone uses the same set of projects and reduces the chance of stray local changes causing conflicts. When a project is removed from the repository, also remove it from the solution to prevent broken references.
 
-### Security and Secret Management
-Any secrets required for CI or releases should be injected via environment variables or secure pipeline mechanisms, never stored in the repository. Use placeholders like `appsettings.Development.json.example` to document configuration formats without exposing real values. Regularly scan the history for accidental secrets and rotate them if necessary.
+If the solution grows significantly, consider grouping related projects under solution folders such as `Libraries`, `Applications`, and `Tests`. This organization helps developers collapse irrelevant sections and focus on their current area of interest. Avoid deeply nested folder hierarchies, as they slow navigation and obscure relationships. In small repositories like `synthea-cli`, one or two levels of grouping is usually sufficient.
 
-### Continuous Integration Practices
-Automated pipelines should build and test the solution on every pull request. When the layout follows the conventions described here, CI scripts can rely on a stable path structure. For example, a pipeline might execute `dotnet restore`, `dotnet build Synthea.Cli.sln`, and `dotnet test` against all projects. Artifacts such as NuGet packages or CLI executables can be produced in the `build/` directory and uploaded to releases. Document these pipeline steps so developers can run them locally before pushing changes.
+Project files benefit from keeping dependencies explicit. Use `<PackageReference>` for NuGet packages and `<ProjectReference>` for internal dependencies. When referencing tools or analyzers, pin versions so builds remain reproducible. Setting `TreatWarningsAsErrors` encourages quality by ensuring that new warnings are addressed promptly. Some teams place code analyzers or formatting settings in a shared `.editorconfig` so that style enforcement is consistent across all projects.
+Developers often use different operating systems, so tasks should rely on cross-platform commands whenever possible. Shell scripts can detect the OS and call platform-specific tools when necessary. Provide instructions for enabling a dev container if one is present; this ensures that contributors without a local .NET installation can still run the code through Docker or a similar environment. Listing recommended extensions also highlights linter or formatter tools that maintain consistent style across pull requests.
 
-### Managing External Dependencies
-Because Synthea relies on a JAR, the repository's tooling should handle its download and caching. Scripts included under `tools/` could check the current version, download it if missing, and verify its checksum. This approach ensures integration tests pass without manual setup. If the JAR is large, avoid committing it; store only the script that retrieves it.
+VS Code's `settings.json` can also configure code formatting rules, indentation width, and line endings. Pair this with an `.editorconfig` at the repository root to standardize the conventions across other editors and IDEs. Encouraging developers to enable format-on-save or run `dotnet format` as part of the CI pipeline helps reduce extraneous whitespace-only changes and keeps diffs focused on meaningful code updates.
+New contributors should find everything they need within the repository. A short `setup.sh` or PowerShell script can bootstrap dependencies, verify the installed .NET SDK version, and download the Synthea JAR if it is not already present. The README should link to this script so the initial setup involves just a single command. Provide a section outlining the directory structure and where to find key files. For example, point users to `src/` for the main CLI code, `tests/` for unit and integration tests, and `tools/` for scripts. Include contact information or links to issue templates in case newcomers encounter problems.
 
-### Cross-Platform Considerations
-Support for Windows, Linux, and macOS broadens the contributor base. Where scripts or build steps differ by platform, keep them in clearly named files (e.g., `build.ps1` and `build.sh`) and document the differences. Use environment variables to abstract platform-specific paths when invoking external tools. Testing pipelines on multiple operating systems can catch incompatibilities early.
+Documentation should follow a clear style. Headings should increment logically, code blocks should specify a language for syntax highlighting, and diagrams should include alt text or captions. Keep an index of documents in `docs/README.md` so readers can quickly locate tutorials, design discussions, and release notes. Because the repository aims to be self-documenting, avoid burying important instructions in ephemeral wikis.
+Sometimes a repository includes generated files that are expensive to reproduce. In those cases, consider using Git LFS or an external artifact store rather than committing binaries directly. Document how to fetch these files when needed. For example, if the project periodically publishes a compiled JAR for Synthea, store it in a release package and provide a PowerShell or Bash script in `tools/` to download it. This keeps the repository lightweight and ensures that only source code and scripts are versioned. Periodically audit the repository with a tool such as `git lfs ls-files` or `git-fat` to verify no large binaries have slipped through.
 
-### Versioning Strategy
-Tag releases using semantic versioning. Update the version number in the `.csproj` file via a centralized property or build script. Keep release notes in `CHANGELOG.md` (listed at line 115) and reference them from the README. When multiple packages exist, consider using Git tags or GitHub releases to mark commit boundaries for each version.
-
-### Encouraging Contributions
-A friendly contribution process lowers the barrier for newcomers. The `CONTRIBUTING.md` file should describe how to run the project, where to find open issues, and any style guidelines. Mention the presence of a `CODE_OF_CONDUCT` if applicable. Use issue templates to capture bug reports and feature requests consistently.
-
-### Testing Philosophy
-Aim for a mix of unit tests, integration tests, and smoke tests. Unit tests should cover core logic without requiring external resources. Integration tests can exercise the CLI against the Synthea JAR. When dependencies are heavy or slow, use mocks or stubs so tests remain fast. Test categories or traits can separate quick-running suites from longer ones, enabling developers to run the appropriate subset during development.
-
-### Handling Large Files and Data Sets
-Synthetic data generated by Synthea can be sizable. Store large artifacts outside the repository, perhaps on a release server or object storage, and provide scripts to retrieve them when needed. Git LFS is an option if large binary files must be under version control, but weigh its complexity against the benefits.
-
-### Logging and Diagnostics
-Provide sufficient logging in the CLI tool so issues can be traced when they arise. Document how to enable verbose logs and where output files are written. When integration tests fail (such as the current failures due to the missing wrapper), logs should indicate the cause clearly. Consider outputting a suggestion to run a setup script if prerequisites are missing.
-
-### Accessibility and Inclusivity
-Make documentation and code comments inclusive and understandable. Where diagrams are provided, include alt-text or descriptions so users with visual impairments can still follow the architecture. Tools like Markdown linting can enforce heading hierarchies and style rules that improve readability.
-
-### Future-Proofing the Workspace
-As .NET evolves, keep the SDK version in sync across the solution and CI pipelines. Use `global.json` at the repository root to pin the SDK version, ensuring consistent builds. When upgrading, test on a branch first and update `global.json`, `Directory.Build.props`, and container images together.
-
-### Sample Workflow
-1. Clone the repository and install recommended VS Code extensions.
-2. Run `dotnet restore` to fetch dependencies.
-3. Execute `dotnet test` to confirm unit and integration tests pass. If the Synthea JAR is missing, run the provided script under `tools/` to download it.
-4. Make code changes in a new branch, keeping commits focused.
-5. Run formatting tools and tests before pushing.
-6. Open a pull request and request reviews as indicated by `CODEOWNERS`.
-7. Ensure CI passes before merging into `main`.
-
-### Conclusion
-Organizing a repository with the practices outlined above reduces friction, supports consistent builds, and eases onboarding. Though the exact structure may evolve, adherence to these principles provides a stable foundation for long-term maintenance.
-
-### Advanced Solution Organization
-For larger solutions, consider creating solution filter files (`.slnf`) to allow developers to load only the projects relevant to their work. Filters reduce IDE startup times and keep memory usage manageable. Each filter should correspond to a common development scenario, such as working solely on the CLI or focusing on integration tests. Document the purpose of each filter in the repository.
-
-When several related projects share common code, evaluate whether to extract a shared library. Avoid inter-project dependencies that create circular references. Use package references rather than project references when the code is stable and released as a NuGet package. This approach speeds up builds and clarifies version compatibility.
-
-### Custom Tools and Generators
-If the repository uses code generation (for example, to create client libraries from an API schema), keep generator projects separate from the runtime code. Place generated code in an isolated directory that is excluded from version control and produced as part of the build. Include instructions for regenerating code in the README and automate it within the build scripts so that the generated output is reproducible.
-
-### Repository Governance
-Establish branch protection rules to enforce status checks before merging. Require pull requests to pass linting and tests. Use CODEOWNERS to automatically request review from domain experts for each area of the code. Maintain an issue tracker with clear labels for bugs, enhancements, and help-wanted tasks. Consider using GitHub Discussions for open-ended design topics so that conversations remain discoverable.
-
-### Documentation Style Guides
-Adopt a consistent style for Markdown headings, code blocks, and callouts. Tools like `markdownlint` (already recommended in `extensions.json` lines 4‑7) catch formatting issues early. When referencing command examples, use fenced code blocks with language hints (`bash`, `powershell`) so syntax highlighting aids readability. Keep lines under 120 characters to accommodate diff tools and side-by-side views.
-
-### Reproducible Development Environments
-Provide scripts or container definitions to set up the development environment. Dev containers ensure that everyone builds with the same SDK and tool versions. When using containers, store the Dockerfile or `.devcontainer.json` in the repository and include instructions for enabling it in VS Code. This approach helps new contributors start quickly without manually configuring dependencies.
-
-### Tracking Technical Debt
-Create a `docs/architecture` folder to capture architecture decision records (ADRs). Each ADR explains the context, decision, and consequences for a particular architectural choice. Regularly review these records during planning cycles to identify outdated decisions or new areas of debt. Keeping them close to the code makes them easier to maintain and encourages collaboration on design.
-
-### Monitoring and Telemetry
-If the CLI tool collects usage metrics or error reports, document how telemetry is enabled and how data is anonymized. Provide opt-out instructions. For open-source projects, transparency around telemetry builds trust with the community.
-
-### License and Legal Notices
-Ensure that the `LICENSE` file at line 119 of the repository tree accurately reflects how the code may be used. If third-party components impose additional requirements, mention them in a `NOTICE` file. Reference these documents from the README so that corporate users can verify compliance.
-
-### Future Directions
-As the project matures, you may add more modules or subcommands to the CLI. Plan the directory structure so new commands fit naturally under a `Commands` or `Subcommands` folder. Consider splitting the repository into multiple packages if the codebase becomes unwieldy. Document the reasoning behind any major restructurings so that future maintainers understand the historical context.
+Another common source of churn comes from IDE-generated files. Visual Studio and Rider create folders like `.vs/` or `.idea/`. Add explicit patterns for these directories to `.gitignore` if they are not already present. When new versions of the IDE introduce additional files, update the ignore list accordingly. Encourage developers to review their `git status` output before committing to ensure only the intended files are staged.
+| Neglecting to run `dotnet restore` before build | Leads to confusing compiler errors when packages are missing | Include restore steps in build scripts and documentation |
+| Keeping unrelated code in the same repository | Makes history harder to navigate and bloats solution load time | Split large or unrelated modules into separate repos or packages |
