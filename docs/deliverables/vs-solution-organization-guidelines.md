@@ -72,13 +72,13 @@ An effective `.gitignore` prevents noisy diffs and protects sensitive informatio
 ## 11 Gap Analysis & Recommendations
 | Issue | Current Path / Pattern | Recommended Change | Rationale |
 | --- | --- | --- | --- |
-| Minimal VS Code workspace | `synthea-cli.code-workspace` only defines folders【F:synthea-cli.code-workspace†L1-L8】 | Expand with tasks or remove in favor of `.vscode/` | Provides consistent tooling |
-| Root setup script | `setup.sh` at line 129 of the tree【F:docs/deliverables/project-structure.md†L129-L129】 | Move to `tools/` and document in README | Centralizes onboarding |
-| Numerous historical docs | Many files under `docs/deliverables` lines 16‑35【F:docs/deliverables/project-structure.md†L16-L35】 | Archive or prune outdated versions | Reduce clutter |
-| Duplicate profiler patterns | `*.psess`, `*.vsp`, `*.vspx` repeated in `.gitignore` lines 53‑152【F:.gitignore†L53-L152】 | Keep one copy of each pattern | Simplifies maintenance |
-| Missing coverage directory ignore | No `coverage/` pattern in `.gitignore` | Add `coverage/` entry near test results section | Prevents accidental commits |
-| Missing package ignore | `.gitignore` lacks `*.nupkg` | Add rule to exclude generated NuGet packages | Avoids binary bloat |
 
+| Redundant deliverables crowd `docs/deliverables` | Many versioned guideline files around lines 16-39 of the tree【F:docs/deliverables/project-structure.md†L16-L39】 | Archive older versions or move to a history folder | Easier navigation for newcomers |
+| Minimal VS Code workspace | `synthea-cli.code-workspace` lacks tasks or settings【F:synthea-cli.code-workspace†L1-L8】 | Add shared tasks or remove the file in favor of `.vscode/` | Consistent tooling |
+| Setup script at repository root | `setup.sh` listed near line 123 of the tree【F:docs/deliverables/project-structure.md†L120-L135】 | Move script to `tools/` and link from README | Centralizes onboarding |
+| Duplicate ignore rules | `*.log` and `*.psess` repeated in `.gitignore`【F:.gitignore†L50-L74】【F:.gitignore†L146-L155】 | Keep one entry per pattern | Simplifies maintenance |
+| Missing cross-platform ignores | `.gitignore` lacks `.DS_Store` and `Thumbs.db` | Add patterns near the end of the file | Avoids OS-specific clutter |
+| Outdated ignore sections | References to Visual Studio 6 and DocProject remain【F:.gitignore†L223-L240】 | Remove obsolete patterns | Keeps file focused |
 Additional notes on repository context: the solution interacts with the Java-based Synthea generator. Managing the dependencies correctly requires clear documentation about where to obtain the JAR file and how to run integration tests. When organizing the repository, it is beneficial to keep the Java artifacts separate from the .NET build output so that cross-platform developers can set up quickly. The CLI itself acts as a thin wrapper, so future maintainers may extend it with new commands or options. A well-structured solution will make such extensions straightforward.
 
 A consistent layout also improves automation. Build pipelines rely on known paths to restore packages, compile projects, and execute tests. When those paths are stable, the CI configuration remains simple, and new pipelines—such as release or benchmarking workflows—can reuse the same scripts with minor adjustments.
