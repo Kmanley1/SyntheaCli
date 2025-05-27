@@ -123,9 +123,12 @@ docker build -t synthea-cli .
 docker run --rm -v "$PWD/out":/data synthea-cli            -- --state CA --population 100            # args after --
 ```
 
+
 ### `setup.sh` for CI / Codex
 
-`setup.sh` (with a wrapper at `run/setup.sh`) does:
+The setup script has moved to `tools/setup.sh` for better project organization. (A thin wrapper remains at `run/setup.sh` for Codex harness compatibility.)
+
+`tools/setup.sh` does:
 
 1. Installs OpenJDK 17 and .NET 8 on Ubuntu runners  
 2. Restores & publishes `Synthea.Cli` to `/workspace/synthea-cli/bin`
@@ -136,7 +139,7 @@ docker run --rm -v "$PWD/out":/data synthea-cli            -- --state CA --popul
 ```yaml
 steps:
   - uses: actions/checkout@v4
-  - run: ./setup.sh
+  - run: ./tools/setup.sh
   - run: dotnet /workspace/synthea-cli/bin/Synthea.Cli.dll -- --help
 ```
 
@@ -171,7 +174,8 @@ synthea-cli/
 ├─ .gitignore
 ├─ README.md
 ├─ synthea-cli.code-workspace    # VS Code workspace file
-├─ setup.sh                      # CI / Codex build script
+├─ tools/
+│   └─ setup.sh                  # CI / Codex build script (moved from root)
 ├─ docs/
 │   └─ Architecture.md           # CLI flow diagrams & overview
 ├─ tools/
@@ -199,7 +203,7 @@ synthea-cli/
 
 1. Fork → feature branch → PR.  
 2. Ensure `dotnet test` passes and coverage ≥ 90 %.  
-3. If you add new dependencies, update both `.csproj` files and `setup.sh`.  
+3. If you add new dependencies, update both `.csproj` files and `tools/setup.sh`.  
 4. Follow `dotnet format` / `.editorconfig` (4-space indents, C# latest).
 
 Issues and feature requests welcome!
