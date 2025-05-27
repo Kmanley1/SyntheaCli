@@ -2,11 +2,12 @@
 
 | Issue | Current Path / Pattern | Recommended Change | Rationale |
 | --- | --- | --- | --- |
-| Many deliverables crowd the documentation folder | Files listed around lines 16‑31 in `project-structure.md`【F:docs/deliverables/project-structure.md†L16-L31】 | Move historical versions to an archive or replace them with unversioned living docs | Simplifies navigation |
-| Setup script placed at repo root | `setup.sh` near lines 107‑116 of `project-structure.md`【F:docs/deliverables/project-structure.md†L107-L116】 | Relocate to `tools/` and update README links | Keeps root clean |
-| Empty VS Code workspace file | `synthea-cli.code-workspace` contains only folder info【F:synthea-cli.code-workspace†L1-L8】 | Remove the file or expand it with meaningful settings | Avoids redundant configuration |
-| Duplicate patterns in `.gitignore` | Repetition of `*.log` and `*.psess`【F:.gitignore†L46-L74】【F:.gitignore†L140-L160】 | Keep a single entry for each ignored pattern | Easier maintenance |
-| Missing cross-platform ignores | `.gitignore` does not include `.DS_Store` or `Thumbs.db` | Add these entries under a new OS-specific section | Prevents stray files |
-| Outdated ignore sections | Legacy Visual Studio 6 lines remain【F:.gitignore†L223-L240】 | Delete obsolete patterns | Focuses ignore rules |
+| Numerous deliverables clutter the docs folder | Files listed around lines 16‑31 in `project-structure.md`【F:docs/deliverables/project-structure.md†L16-L31】 | Move historical versions to an `archive/` subfolder or merge them into living docs | Easier navigation |
+| Setup script placed at repo root | `setup.sh` line 115 in the tree【F:docs/deliverables/project-structure.md†L107-L116】 | Relocate to `tools/` and reference it from the README | Keeps root clean |
+| VS Code workspace is mostly empty | `synthea-cli.code-workspace` lines 1‑8【F:synthea-cli.code-workspace†L1-L8】 | Remove the file or add meaningful settings and tasks | Avoids redundant configuration |
+| Duplicate log patterns in `.gitignore` | Entries at lines 54 and 147‑153【F:.gitignore†L52-L58】【F:.gitignore†L145-L153】 | Keep one `*.log` entry near other build artifacts | Simplifies maintenance |
+| `.vspscc` appears twice in `.gitignore` | Lines 55 and 201【F:.gitignore†L52-L56】【F:.gitignore†L200-L201】 | Consolidate into a single ignore rule | Reduces clutter |
+| Outdated ignore rules linger | Guidance Automation Toolkit lines 227‑240【F:.gitignore†L220-L240】 | Remove obsolete patterns | Modernizes the list |
+| Untracked test output listed in the tree | `TestResults/` lines 89‑94【F:docs/deliverables/project-structure.md†L88-L95】 | Ensure these directories are cleaned and ignored | Prevents accidental commits |
 
-Addressing these issues will streamline contributor onboarding, reduce noise in version control, and align the repository with common .NET conventions.
+Addressing these gaps aligns the repository with common .NET conventions and improves contributor experience.
