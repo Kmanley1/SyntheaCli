@@ -25,17 +25,20 @@ docs/
 │   ├─ iterative-ai-enabled-process.md
 │   ├─ on-going-scorecard-metrics.md
 │   ├─ project-structure-recommendations-v2.md
+│   ├─ project-structure-recommendations-v3.md
 │   ├─ project-structure-recommendations.md
 │   ├─ project-structure.md
 │   ├─ prompt-generator.md
 │   ├─ roadmap.md
 │   ├─ vs-solution-organization-guidelines-v2.md
+│   ├─ vs-solution-organization-guidelines-v3.md
 │   └─ vs-solution-organization-guidelines.md
 ├─ prompts/
 │   ├─ codex-task-template-ai-change-log.md
 │   ├─ codex-task-template-prompt.md
 │   ├─ codex-task-template-run-codex-automation.md
 │   ├─ codex-task-template-smoke-test-task.md
+│   ├─ codex-task-template-solution-critique.md
 │   ├─ codex-task-update-architectural-eval.md
 │   ├─ codex-task-update-architecture.md
 │   ├─ codex-task-update-health-check.md
@@ -87,11 +90,14 @@ src/
 │   ├─ JarManager.cs
 │   ├─ Program.cs
 │   └─ Synthea.Cli.csproj
+TestResults/
+└─ test-results.trx
 tests/
 ├─ Synthea.Cli.IntegrationTests/
 │   ├─ TestResults/
 │   │   └─ TestResults.trx
 │   ├─ ScaffoldingSmokeTest.cs
+│   ├─ SkipTestException.cs
 │   ├─ Synthea.Cli.IntegrationTests.csproj
 │   ├─ SyntheaCliWrapperRunTests.cs
 │   └─ SyntheaRunTests.cs
@@ -112,6 +118,7 @@ tools/
 │   └─ Write-DirectoryTreeMarkdown.ps1
 .gitattributes
 .gitignore
+AGENTS.md
 CHANGELOG.md
 CODEOWNERS
 CONTRIBUTING.md
