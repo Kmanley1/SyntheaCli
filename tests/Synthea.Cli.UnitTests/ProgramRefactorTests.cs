@@ -10,7 +10,7 @@ public class ProgramRefactorTests
     [Fact]
     public void BuildArgumentList_BuildsExpectedFlags()
     {
-        var opts = new Program.RunOptions(
+        var opts = new RunOptions(
             Output: new DirectoryInfo("/tmp"),
             Refresh: false,
             JavaPath: "java",
@@ -31,7 +31,7 @@ public class ProgramRefactorTests
             Formats: new[] { "fhir" },
             Passthru: new[] { "--extra" });
 
-        var list = Program.BuildArgumentList(opts);
+        var list = RunCommand.BuildArgumentList(opts);
         Assert.Contains("-p", list);
         Assert.Contains("5", list);
         Assert.Contains("-s", list);
@@ -58,7 +58,7 @@ public class ProgramRefactorTests
     public void CreateProcessStartInfo_UsesWorkingDirectoryAndJar()
     {
         var tmpDir = Path.Combine(Path.GetTempPath(), "synthea-test-tmp");
-        var opts = new Program.RunOptions(
+        var opts = new RunOptions(
             Output: new DirectoryInfo(tmpDir),
             Refresh: false,
             JavaPath: "customjava",
@@ -80,7 +80,7 @@ public class ProgramRefactorTests
             Passthru: System.Array.Empty<string>());
 
         var jar = new FileInfo(Path.Combine(tmpDir, "synthea.jar"));
-        var psi = Program.CreateProcessStartInfo(opts, jar);
+        var psi = RunCommand.CreateProcessStartInfo(opts, jar);
         Assert.Equal("customjava", psi.FileName);
         Assert.Equal(tmpDir, psi.WorkingDirectory);
         Assert.Contains("-jar", psi.ArgumentList);
