@@ -332,3 +332,4 @@ intl-cache/
 
 # Project-specific files
 synthea-output/*
+third-party/
