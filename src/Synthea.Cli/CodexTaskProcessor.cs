@@ -88,6 +88,8 @@ public static class CodexTaskProcessor
                     var baseName = Path.GetFileNameWithoutExtension(name).Replace(' ', '_');
                     var logName = $"{prefix}-{baseName}-log.md";
                     var fbName  = $"{prefix}-{baseName}-feedback.md";
+                    // Re-create the staged directory in case an earlier task removed it
+                    Directory.CreateDirectory(stagedDir);
                     var logPath = GetUniqueFilePath(stagedDir, logName);
                     var fbPath  = GetUniqueFilePath(stagedDir, fbName);
 
