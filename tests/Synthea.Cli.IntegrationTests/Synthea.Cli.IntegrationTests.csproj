@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
     <!-- <GenerateProgramFile>false</GenerateProgramFile> -->
     <RootNamespace>Synthea.Cli.IntegrationTests</RootNamespace>
     <AssemblyName>Synthea.Cli.IntegrationTests</AssemblyName>

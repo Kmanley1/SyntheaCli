@@ -28,10 +28,28 @@ public class SyntheaCliWrapperRunTests : IDisposable
 
     private static bool CommandExists(string cmd)
     {
-        var paths = (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
-            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
-        var exe = OperatingSystem.IsWindows() && Path.GetExtension(cmd) != ".exe" ? cmd + ".exe" : cmd;
-        return paths.Any(p => File.Exists(Path.Combine(p, exe)));
+        try
+        {
+            // Try running the command to see if it exists
+            var psi = OperatingSystem.IsWindows()
+                ? new ProcessStartInfo("cmd.exe", $"/c where {cmd}")
+                : new ProcessStartInfo("which", cmd);
+            psi.RedirectStandardOutput = true;
+            psi.RedirectStandardError = true;
+            psi.UseShellExecute = false;
+            
+            using var proc = Process.Start(psi);
+            proc?.WaitForExit();
+            return proc?.ExitCode == 0;
+        }
+        catch
+        {
+            // Fallback to PATH search
+            var paths = (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
+                .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
+            var exe = OperatingSystem.IsWindows() && Path.GetExtension(cmd) != ".exe" ? cmd + ".exe" : cmd;
+            return paths.Any(p => File.Exists(Path.Combine(p, exe)));
+        }
     }
 
     private async Task<(int exitCode, string stdOut, string stdErr)> RunCliCommandAsync(string args, string? workingDir = null)
