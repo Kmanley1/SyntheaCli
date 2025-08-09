@@ -9,7 +9,7 @@
     <PackageId>Synthea.Cli</PackageId>
     <ToolCommandName>synthea</ToolCommandName>
     <DotNetCliToolAliases>syn</DotNetCliToolAliases>
-    <PackageVersion>0.2.0</PackageVersion>
+    <PackageVersion>1.0.0</PackageVersion>
     <Description>CLI wrapper around MITRE Synthea synthetic patient generator</Description>
     <PackageTags>synthea;health;cli;dotnet-tool</PackageTags>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>

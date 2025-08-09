@@ -1,6 +1,11 @@
 # Scripts
 
-All cross-platform and reusable scripts are located in `tools/windows/` (for PowerShell) or `tools/` (for general helpers). Single-use or legacy scripts are being consolidated and removed from `tools/windows/`.
+All cross-platform and reusable scripts | **Zero-install JAR** | Automatically fetches the newest `synthea-with-dependencies.jar` from GitHub releases and verifies its integrity. |
+| **Configurable cache** | Stores the JAR under `%LOCALAPPDATA%\Synthea.Cli` / `$XDG_CACHE_HOME/Synthea.Cli`; refresh anytime with `--refresh`. |
+| **Friendly flags** | `--state OH`, `--city "Columbus"`, `--output ./data`, `--seed 42`, `--initial-snapshot snap.json`, `--format FHIR` map directly to Synthea flags. |
+| **Cross-platform** | Runs on Windows, macOS, Linux—wherever .NET 8 + Java 11+ are available. |
+| **Task automation** | Built-in CodexTaskProcessor for CI/CD integration and automated workflows. |
+| **Comprehensive testing** | 44 tests (40 unit + 4 integration) with full coverage of CLI functionality and Java integration. |cated in `tools/windows/` (for PowerShell) or `tools/` (for general helpers). Single-use or legacy scripts are being consolidated and removed from `tools/windows/`.
 
 ## Usage
 
@@ -55,8 +60,8 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
 | **Configurable cache** | Stores the JAR under `%LOCALAPPDATA%\Synthea.Cli` / `$XDG_CACHE_HOME/Synthea.Cli`; refresh anytime with `--refresh`. |
 | **Friendly flags** | `--state OH`, `--city "Columbus"`, `--output ./data`, `--seed 42`, `--initial-snapshot snap.json`, `--format FHIR` map directly to Synthea flags. |
 | **Portable** | Runs on Windows, macOS, Linux, containers—wherever .NET 8 + Java 17+ are available. |
-| **Docker image** | Multi-stage Dockerfile builds a slim runtime with OpenJDK 17 and publishes the tool. |
-| **Unit-tested** | ≥ 90 % line coverage via xUnit and Coverlet; network & process calls are fully mocked. |
+| **Docker image** | Multi-stage Dockerfile builds a slim runtime with OpenJDK 11 and publishes the tool. |
+| **Unit-tested** | Complete test coverage via xUnit and Coverlet; network & process calls are fully mocked. |
 
 ---
 
@@ -65,12 +70,12 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
 ### Prerequisites
 
 - **.NET 8 SDK** — <https://dotnet.microsoft.com/download>  
-- **Java ≥ 17** in your `PATH` (`java -version`) – *only required at runtime*.
+- **Java ≥ 11** in your `PATH` (`java -version`) – *only required at runtime*.
 
 ### Install as a global tool
 
 ```bash
-dotnet tool install --global Synthea.Cli --version 0.2.0
+dotnet tool install --global Synthea.Cli --version 1.0.0
 ```
 
 ### Run
@@ -109,12 +114,15 @@ dotnet test --collect:"XPlat Code Coverage"
 # Coverage report in ./TestResults/**/coverage.cobertura.xml
 ```
 
+The project includes **44 comprehensive tests**:
+- **40 unit tests** covering all CLI functionality, validation logic, and edge cases  
+- **4 integration tests** with actual Java/Synthea execution and file generation validation
+
+All tests use xUnit framework with full mocking for network and process calls.
+
 ### Docker
 
-```bash
-./build.sh                 # builds image Synthea.Cli:latest
-./run.sh                   # runs CLI, mounts ./output as /data
-```
+**Note:** Docker build scripts are not currently available in this version.
 
 Manual example:
 
@@ -126,11 +134,11 @@ docker run --rm -v "$PWD/out":/data Synthea.Cli            -- --state CA --popul
 
 ### `setup.sh` for CI / Codex
 
-The setup script has moved to `tools/setup.sh` for better project organization. (A thin wrapper remains at `run/setup.sh` for Codex harness compatibility.)
+The setup script has moved to `tools/setup.sh` for better project organization.
 
 `tools/setup.sh` does:
 
-1. Installs OpenJDK 17 and .NET 8 on Ubuntu runners  
+1. Installs OpenJDK 11 and .NET 8 on Ubuntu runners  
 2. Restores & publishes `Synthea.Cli` to `/workspace/synthea-cli/bin`
 
 #### GitHub Actions example
@@ -161,7 +169,7 @@ Execute all integration tests with:
 dotnet test --filter Category=Integration
 ```
 
-This builds the CLI and runs cross-platform tests including `SyntheaRunTests`
+This builds the CLI and runs cross-platform tests including `ScaffoldingSmokeTest`, `SyntheaRunTests`,
 and `SyntheaCliWrapperRunTests`.
 
 ---
@@ -169,32 +177,51 @@ and `SyntheaCliWrapperRunTests`.
 ## Project Layout
 
 ```text
-synthea-cli/
+SyntheaCli/
 ├─ .gitattributes                # enforce LF for shell scripts
 ├─ .gitignore
 ├─ README.md
-├─ synthea-cli.code-workspace    # VS Code workspace file
-├─ tools/
-│   └─ setup.sh                  # CI / Codex build script (moved from root)
-├─ docs/
-│   └─ Architecture.md           # CLI flow diagrams & overview
-├─ tools/
-│   ├─ synthea-cli-create.ps1    # helper to scaffold new CLI repo
-│   └─ windows/
-│       └─ install-vscode-extensions.ps1
-├─ run/
-│   └─ setup.sh                  # thin wrapper for Codex harness
+├─ Synthea.Cli.code-workspace    # VS Code workspace file
+├─ Directory.Build.props         # MSBuild configuration with artifacts structure
 ├─ Synthea.Cli.sln               # Visual Studio solution
+├─ artifacts/                    # Build outputs (bin/ and obj/ subdirectories)
+├─ tools/
+│   ├─ setup.sh                  # CI / Linux build script
+│   ├─ setup.ps1                 # CI / Windows build script  
+│   └─ windows/
+│       ├─ install-vscode-extensions.ps1
+│       ├─ synthea-cli-create.ps1 # helper to scaffold new CLI repo
+│       └─ nuget-helper.ps1
+├─ setup-test-environment.ps1    # Test environment setup for Windows
+├─ docs/
+│   ├─ deliverables/             # Project documentation and analysis
+│   ├─ prompts/                  # AI automation templates
+│   ├─ reference/                # External documentation  
+│   └─ research/                 # Research materials
 ├─ src/Synthea.Cli/              # main CLI project
 │   ├─ Program.cs                # System.CommandLine entry point
+│   ├─ RunCommand.cs             # Run command implementation
+│   ├─ RunOptions.cs             # Command options definitions
 │   ├─ JarManager.cs             # JAR download & cache helper
+│   ├─ ProcessHelpers.cs         # Process execution utilities
+│   ├─ CodexTaskProcessor.cs     # Task automation support
 │   └─ Synthea.Cli.csproj
-├─ Synthea.Cli.UnitTests/            # unit tests (xUnit)
-│   ├─ CliTests.cs
-│   ├─ JarManagerTests.cs
-│   ├─ ProgramHandlerTests.cs
-│   └─ Synthea.Cli.UnitTests.csproj
-└─ synthea-output/               # default data output (git-ignored)
+├─ tests/
+│   ├─ Synthea.Cli.UnitTests/           # unit tests (xUnit)
+│   │   ├─ CliTests.cs
+│   │   ├─ JarManagerTests.cs
+│   │   ├─ ProgramHandlerTests.cs
+│   │   ├─ ProgramRefactorTests.cs
+│   │   ├─ CodexTaskProcessorTests.cs
+│   │   └─ Synthea.Cli.UnitTests.csproj
+│   └─ Synthea.Cli.IntegrationTests/     # integration tests (xUnit)
+│       ├─ ScaffoldingSmokeTest.cs
+│       ├─ SyntheaRunTests.cs
+│       ├─ SyntheaCliWrapperRunTests.cs
+│       ├─ SkipTestException.cs
+│       └─ Synthea.Cli.IntegrationTests.csproj
+└─ third-party/                  # External dependencies and libraries
+    └─ MPXJ.Net/
 ```
 
 ---
@@ -223,4 +250,4 @@ Happy generating! 🎉
 
 ## Architecture
 
-See [docs/Architecture.md](docs/Architecture.md) for diagrams of the CLI flow and a high-level overview of the Synthea JAR.
+See [docs/deliverables/Architecture.md](docs/deliverables/Architecture.md) for detailed architectural information and design decisions.
