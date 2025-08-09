@@ -15,6 +15,42 @@
             "type": "shell",
             "group": "test",
             "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "test-with-autofix",
+            "command": "pwsh",
+            "type": "shell",
+            "args": [
+                "-Command",
+                "& { $testOutput = dotnet test 2>&1; $exitCode = $LASTEXITCODE; if ($exitCode -ne 0 -and ($testOutput -join ' ') -match '(Xunit.*could not be found|Package.*was not found)') { Write-Host 'Detected NuGet corruption - running auto-fix...' -ForegroundColor Yellow; if (Test-Path './fix-java-detection.ps1') { & pwsh './fix-java-detection.ps1'; dotnet test } else { dotnet clean; dotnet nuget locals all --clear; dotnet restore --force --no-cache; dotnet build; dotnet test } } else { $testOutput; exit $exitCode } }"
+            ],
+            "group": "test",
+            "problemMatcher": "$msCompile",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            }
+        },
+        {
+            "label": "setup-test-environment",
+            "command": "pwsh",
+            "type": "shell",
+            "args": [
+                "-File",
+                "./setup-test-environment.ps1"
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
         }
     ]
 }

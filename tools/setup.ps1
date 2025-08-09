@@ -124,21 +124,93 @@ if (Test-Path $releaseDll) {
     Write-Host "  ❌ Release CLI not found at: $releaseDll" -ForegroundColor Red
 }
 
-# 5) Run tests to verify everything works
+# 5) Run tests to verify everything works with automatic corruption detection
 if (-not $SkipTests) {
     Write-Host ""
     Write-Host "🧪 Running tests to verify setup..." -ForegroundColor Yellow
     
-    if ($Verbose) {
-        dotnet test --no-build --verbosity normal
-    } else {
-        dotnet test --no-build --verbosity minimal
+    # Helper function to detect NuGet corruption
+    function Test-ForNuGetCorruption {
+        param($TestOutput)
+        
+        $corruptionIndicators = @(
+            "could not be found \(are you missing a using directive or an assembly reference\?\)",
+            "The type or namespace name 'Xunit' could not be found",
+            "The type or namespace name 'Fact' could not be found",
+            "Package .*, version .* was not found",
+            "NuGet restore might have only partially completed"
+        )
+        
+        foreach ($indicator in $corruptionIndicators) {
+            if ($TestOutput -match $indicator) {
+                return $true
+            }
+        }
+        return $false
     }
+    
+    # Helper function to run automatic fix
+    function Invoke-AutomaticFix {
+        Write-Host "  🔧 Detected NuGet corruption - running automatic fix..." -ForegroundColor Yellow
+        
+        $fixScriptPath = "..\fix-java-detection.ps1"
+        if (Test-Path $fixScriptPath) {
+            try {
+                & pwsh $fixScriptPath
+                return $LASTEXITCODE -eq 0
+            } catch {
+                Write-Host "    ✗ Fix script failed: $($_.Exception.Message)" -ForegroundColor Red
+                return $false
+            }
+        } else {
+            # Manual fix
+            Write-Host "    Running manual fix steps..." -ForegroundColor Cyan
+            dotnet clean | Out-Null
+            dotnet nuget locals all --clear | Out-Null
+            dotnet restore --force --no-cache | Out-Null
+            dotnet build | Out-Null
+            return $LASTEXITCODE -eq 0
+        }
+    }
+    
+    # First test attempt
+    if ($Verbose) {
+        $testOutput = dotnet test --no-build --verbosity normal 2>&1
+    } else {
+        $testOutput = dotnet test --no-build --verbosity minimal 2>&1
+    }
+    
+    $testOutputString = $testOutput | Out-String
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "  ✅ All tests passed successfully" -ForegroundColor Green
     } else {
-        Write-Host "  ⚠️  Some tests failed - check output above for details" -ForegroundColor Yellow
+        # Check for corruption and attempt fix
+        if (Test-ForNuGetCorruption -TestOutput $testOutputString) {
+            if (Invoke-AutomaticFix) {
+                Write-Host "  🔄 Re-running tests after fix..." -ForegroundColor Cyan
+                
+                # Rebuild after fix
+                dotnet build | Out-Null
+                
+                # Second test attempt
+                if ($Verbose) {
+                    dotnet test --no-build --verbosity normal 2>&1 | Out-Null
+                } else {
+                    dotnet test --no-build --verbosity minimal 2>&1 | Out-Null
+                }
+                
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "  ✅ All tests passed after automatic fix!" -ForegroundColor Green
+                } else {
+                    Write-Host "  ⚠️  Tests still failing after fix - manual intervention may be required" -ForegroundColor Yellow
+                }
+            } else {
+                Write-Host "  ✗ Automatic fix failed" -ForegroundColor Red
+            }
+        } else {
+            Write-Host "  ⚠️  Some tests failed - check output above for details" -ForegroundColor Yellow
+        }
     }
 }
 

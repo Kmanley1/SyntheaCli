@@ -120,6 +120,29 @@ The project includes **44 comprehensive tests**:
 
 All tests use xUnit framework with full mocking for network and process calls.
 
+#### Auto-Fix for Package Corruption
+
+The test infrastructure includes automatic detection and repair of NuGet package corruption:
+
+```bash
+# Enhanced test setup with auto-fix capability
+.\setup-test-environment.ps1
+
+# VS Code tasks with auto-fix (Ctrl+Shift+P -> Tasks: Run Task)
+test-with-autofix              # Run tests with automatic corruption fix
+setup-test-environment         # Full environment setup
+
+# Manual corruption fix if needed
+.\fix-java-detection.ps1       # Repair corrupted NuGet packages
+```
+
+**Auto-fix triggers on these errors:**
+- `The type or namespace name 'Xunit' could not be found`
+- `Package [name], version [version] was not found`  
+- `NuGet restore might have only partially completed`
+
+The system automatically clears caches, restores packages, rebuilds, and re-runs tests.
+
 ### Docker
 
 **Note:** Docker build scripts are not currently available in this version.
