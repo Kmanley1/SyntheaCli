@@ -1,22 +1,3 @@
-# Scripts
-
-All cross-platform and reusable scripts | **Zero-install JAR** | Automatically fetches the newest `synthea-with-dependencies.jar` from GitHub releases and verifies its integrity. |
-| **Configurable cache** | Stores the JAR under `%LOCALAPPDATA%\Synthea.Cli` / `$XDG_CACHE_HOME/Synthea.Cli`; refresh anytime with `--refresh`. |
-| **Friendly flags** | `--state OH`, `--city "Columbus"`, `--output ./data`, `--seed 42`, `--initial-snapshot snap.json`, `--format FHIR` map directly to Synthea flags. |
-| **Cross-platform** | Runs on Windows, macOS, Linux—wherever .NET 8 + Java 11+ are available. |
-| **Task automation** | Built-in CodexTaskProcessor for CI/CD integration and automated workflows. |
-| **Comprehensive testing** | 44 tests (40 unit + 4 integration) with full coverage of CLI functionality and Java integration. |cated in `tools/windows/` (for PowerShell) or `tools/` (for general helpers). Single-use or legacy scripts are being consolidated and removed from `tools/windows/`.
-
-## Usage
-
-- `tools/windows/Write-DirectoryTreeMarkdown.ps1`: Generates a Markdown directory tree for the project. Example:
-  ```pwsh
-  pwsh -NoProfile -ExecutionPolicy Bypass -File ./tools/windows/Write-DirectoryTreeMarkdown.ps1 -Path . -OutFile ./docs/deliverables/project-structure.md -IncludeFiles
-  ```
-- `tools/windows/install-vscode-extensions.ps1`: Installs recommended VS Code extensions for this project.
-- `tools/windows/synthea-cli-create.ps1`: Helper for scaffolding a new CLI repo.
-
-> **Note:** Scripts in `tools/windows/` are preferred for PowerShell helpers. All general-purpose scripts are now under `tools/` for better maintainability and discoverability.
 # Synthea.Cli
 
 [![NuGet](https://img.shields.io/nuget/v/Synthea.Cli.svg)](https://www.nuget.org/packages/Synthea.Cli/)
@@ -28,27 +9,23 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
 
 ## Table of Contents
 
-- [Scripts](#scripts)
-  - [Usage](#usage)
-- [Synthea.Cli](#synthea-cli)
-  - [Table of Contents](#table-of-contents)
-  - [Features](#features)
-  - [Quick Start](#quick-start)
-    - [Prerequisites](#prerequisites)
-    - [Install as a global tool](#install-as-a-global-tool)
-    - [Run](#run)
-  - [Developer Guide](#developer-guide)
-    - [Clone \& Build](#clone--build)
-    - [Unit Tests](#unit-tests)
-    - [Docker](#docker)
-    - [`setup.sh` for CI / Codex](#setupsh-for-ci--codex)
-      - [GitHub Actions example](#github-actions-example)
-    - [Pre/Post Context Tasks](#prepost-context-tasks)
-    - [Running Integration Tests](#running-integration-tests)
-  - [Project Layout](#project-layout)
-  - [Contributing](#contributing)
-  - [License \& Credits](#license--credits)
-  - [Architecture](#architecture)
+- [Features](#features)
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Install as a global tool](#install-as-a-global-tool)
+  - [Run](#run)
+- [Developer Guide](#developer-guide)
+  - [Clone \& Build](#clone--build)
+  - [Unit Tests](#unit-tests)
+  - [Docker](#docker)
+  - [`setup.sh` for CI / Codex](#setupsh-for-ci--codex)
+    - [GitHub Actions example](#github-actions-example)
+  - [Pre/Post Context Tasks](#prepost-context-tasks)
+  - [Running Integration Tests](#running-integration-tests)
+- [Project Layout](#project-layout)
+- [Contributing](#contributing)
+- [License \& Credits](#license--credits)
+- [Architecture](#architecture)
 
 ---
 
@@ -56,11 +33,10 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
 
 | Feature | Details |
 |---------|---------|
-| **Zero-install JAR** | Automatically fetches the newest `synthea-with-dependencies.jar` from GitHub releases and verifies its SHA-256 checksum. |
-| **Configurable cache** | Stores the JAR under `%LOCALAPPDATA%\Synthea.Cli` / `$XDG_CACHE_HOME/Synthea.Cli`; refresh anytime with `--refresh`. |
+| **Zero-install JAR** | Automatically fetches the newest `synthea-with-dependencies.jar` from GitHub releases and verifies its SHA-256 checksum when the upstream publishes one. |
+| **Configurable cache** | Stores the JAR under `%LOCALAPPDATA%\Synthea.Cli` on Windows and `~/.local/share/Synthea.Cli` on Linux/macOS; refresh anytime with `--refresh`. |
 | **Friendly flags** | `--state OH`, `--city "Columbus"`, `--output ./data`, `--seed 42`, `--initial-snapshot snap.json`, `--format FHIR` map directly to Synthea flags. |
-| **Portable** | Runs on Windows, macOS, Linux, containers—wherever .NET 8 + Java 17+ are available. |
-| **Docker image** | Multi-stage Dockerfile builds a slim runtime with OpenJDK 11 and publishes the tool. |
+| **Portable** | Runs on Windows, macOS, Linux—wherever .NET 8 + Java 11+ are available. |
 | **Unit-tested** | Complete test coverage via xUnit and Coverlet; network & process calls are fully mocked. |
 
 ---
@@ -145,13 +121,13 @@ The system automatically clears caches, restores packages, rebuilds, and re-runs
 
 ### Docker
 
-**Note:** Docker build scripts are not currently available in this version.
-
-Manual example:
+> **Status:** Planned. A Dockerfile is not yet included in this version.
+> The example below is illustrative of the intended usage once one is added.
 
 ```bash
-docker build -t Synthea.Cli .
-docker run --rm -v "$PWD/out":/data Synthea.Cli            -- --state CA --population 100            # args after --
+# Illustrative only — requires a Dockerfile to be added first.
+docker build -t synthea.cli .
+docker run --rm -v "$PWD/out":/data synthea.cli run --output /data --state CA --population 100
 ```
 
 
