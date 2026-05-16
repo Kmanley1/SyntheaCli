@@ -16,6 +16,11 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/Kmanley1/Synthea.Cli</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+    <!-- Publish symbols as a .snupkg alongside the .nupkg so step-into
+         debugging works for downstream consumers. dotnet nuget push of the
+         .nupkg automatically pushes the matching .snupkg from the same folder. -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,8 +29,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="../LICENSE" Pack="true" PackagePath="" />
-    <None Include="../README.md" Pack="true" PackagePath="" />
+    <!-- csproj lives in src/Synthea.Cli/, so the repo root is two levels up. -->
+    <None Include="../../LICENSE" Pack="true" PackagePath="" />
+    <None Include="../../README.md" Pack="true" PackagePath="" />
   </ItemGroup>
 
   <ItemGroup>
