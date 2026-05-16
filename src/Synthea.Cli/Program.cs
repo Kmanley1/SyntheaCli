@@ -4,19 +4,34 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Synthea.Cli;
 
 internal static class Program
 {
-    internal static IProcessRunner Runner { get; set; } = new DefaultProcessRunner();
-    internal static Func<bool, IProgress<(long, long)>?, CancellationToken, Task<FileInfo>> EnsureJarAsyncFunc { get; set; } = JarManager.EnsureJarAsync;
-
     public static async Task<int> Main(string[] args)
     {
         // Synthea emits patient names with diacritics; force UTF-8 so they don't
         // mojibake on Windows code pages (cp437/cp1252).
         Console.OutputEncoding = Encoding.UTF8;
+
+        await using var services = BuildDefaultServices();
+        return await RunAsync(args, services);
+    }
+
+    internal static ServiceProvider BuildDefaultServices()
+    {
+        var sc = new ServiceCollection();
+        sc.AddSingleton<IProcessRunner, DefaultProcessRunner>();
+        sc.AddSingleton<IJarSource>(_ => new JarManager());
+        return sc.BuildServiceProvider();
+    }
+
+    internal static async Task<int> RunAsync(string[] args, IServiceProvider services)
+    {
+        var runner = services.GetRequiredService<IProcessRunner>();
+        var jarSource = services.GetRequiredService<IJarSource>();
 
         var root = new RootCommand("CLI wrapper around MITRE Synthea synthetic patient generator");
 
@@ -35,7 +50,7 @@ internal static class Program
         root.Options.Add(refreshOpt);
         root.Options.Add(javaOpt);
 
-        root.Subcommands.Add(RunCommand.Build(refreshOpt, javaOpt));
+        root.Subcommands.Add(RunCommand.Build(runner, jarSource, refreshOpt, javaOpt));
 
         if (args.Length == 0) args = new[] { "--help" };
         return await root.Parse(args).InvokeAsync();

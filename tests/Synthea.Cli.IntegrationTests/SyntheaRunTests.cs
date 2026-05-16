@@ -1,7 +1,10 @@
 using System;
 using System.IO;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using Synthea.Cli;
 using Xunit;
 
 namespace Synthea.Cli.IntegrationTests;
@@ -28,10 +31,13 @@ public class SyntheaRunTests : IDisposable
         var outputDir = Path.Combine(_workDir, "output");
         Directory.CreateDirectory(outputDir);
 
-        Program.Runner = new FakeRunner(outputDir);
-        Program.EnsureJarAsyncFunc = (_, _, _) => Task.FromResult(new FileInfo(Path.Combine(_workDir, "dummy.jar")));
+        var jar = new FileInfo(Path.Combine(_workDir, "dummy.jar"));
+        var sc = new ServiceCollection();
+        sc.AddSingleton<IProcessRunner>(new FakeRunner(outputDir));
+        sc.AddSingleton<IJarSource>(new StubJarSource(jar));
+        await using var services = sc.BuildServiceProvider();
 
-        var exit = await Program.Main(new[] { "run", "--output", _workDir, "--population", "1" });
+        var exit = await Program.RunAsync(new[] { "run", "--output", _workDir, "--population", "1" }, services);
 
         Assert.Equal(0, exit);
         Assert.True(Directory.Exists(outputDir));
@@ -57,5 +63,17 @@ public class SyntheaRunTests : IDisposable
             public int ExitCode => 0;
             public void Dispose() { }
         }
+    }
+
+    private sealed class StubJarSource : IJarSource
+    {
+        private readonly FileInfo _jar;
+        public StubJarSource(FileInfo jar) => _jar = jar;
+        public FileInfo? TryFindCachedJar() => _jar;
+        public Task<FileInfo> EnsureJarAsync(
+            bool forceRefresh = false,
+            IProgress<(long downloaded, long total)>? prog = null,
+            CancellationToken token = default)
+            => Task.FromResult(_jar);
     }
 }

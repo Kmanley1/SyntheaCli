@@ -19,7 +19,7 @@ internal static class RunCommand
         "fhir", "csv", "ccda", "bulkfhir", "bulk-fhir", "cpcds"
     };
 
-    internal static Command Build(Option<bool> refreshOpt, Option<string?> javaOpt)
+    internal static Command Build(IProcessRunner runner, IJarSource jarSource, Option<bool> refreshOpt, Option<string?> javaOpt)
     {
         var runCmd = new Command("run", "Generate synthetic health records");
 
@@ -94,7 +94,7 @@ internal static class RunCommand
 
             if (printArgs)
             {
-                return PrintInvocation(hosting, args);
+                return PrintInvocation(hosting, args, jarSource);
             }
 
             Directory.CreateDirectory(hosting.Output.FullName);
@@ -109,14 +109,14 @@ internal static class RunCommand
                         Console.Write($"\rDownloading Synthea {p.dl / 1_000_000}/{p.total / 1_000_000} MB…");
                 });
 
-                var jar = await Program.EnsureJarAsyncFunc(hosting.Refresh, progress, cancelToken);
+                var jar = await jarSource.EnsureJarAsync(hosting.Refresh, progress, cancelToken);
 
                 if (interactive) Console.WriteLine();
                 Console.WriteLine($"✓ Using {jar.Name}  ({jar.FullName})");
 
                 var psi = CreateProcessStartInfo(hosting, args, jar);
 
-                using var proc = Program.Runner.Start(psi);
+                using var proc = runner.Start(psi);
                 using var killReg = cancelToken.Register(() =>
                 {
                     try { proc.Kill(entireProcessTree: true); } catch { /* already exited */ }
@@ -274,9 +274,9 @@ internal static class RunCommand
         return psi;
     }
 
-    private static int PrintInvocation(HostingOptions hosting, SyntheaArgs args)
+    private static int PrintInvocation(HostingOptions hosting, SyntheaArgs args, IJarSource jarSource)
     {
-        var cachedJar = JarManager.TryFindCachedJar();
+        var cachedJar = jarSource.TryFindCachedJar();
         var jarLabel = cachedJar?.FullName
             ?? "<synthea.jar — not yet cached; run once without --print-args>";
         Console.WriteLine($"# Java executable: {hosting.JavaPath}");
