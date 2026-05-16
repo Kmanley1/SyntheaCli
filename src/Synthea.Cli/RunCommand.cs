@@ -74,17 +74,17 @@ internal static class RunCommand
 
         runCmd.SetAction(async (ParseResult parseResult, CancellationToken cancelToken) =>
         {
-            var opts = ParseRunOptions(parseResult, refreshOpt, javaOpt, outputOpt, stateOpt, cityOpt,
+            var (hosting, args) = ParseRunOptions(parseResult, refreshOpt, javaOpt, outputOpt, stateOpt, cityOpt,
                 genderOpt, ageOpt, moduleDirOpt, moduleOpt, popOpt, seedOpt, configOpt, zipOpt,
                 fhirVerOpt, initialSnapOpt, updatedSnapOpt, daysForwardOpt, formatOpt, passthru);
             var printArgs = parseResult.GetValue(printArgsOpt);
 
-            if (!string.IsNullOrWhiteSpace(opts.City) && string.IsNullOrWhiteSpace(opts.State))
+            if (!string.IsNullOrWhiteSpace(args.City) && string.IsNullOrWhiteSpace(args.State))
             {
                 Console.Error.WriteLine("--city requires --state to be specified.");
                 return 1;
             }
-            if (!string.IsNullOrWhiteSpace(opts.Zip) && string.IsNullOrWhiteSpace(opts.State))
+            if (!string.IsNullOrWhiteSpace(args.Zip) && string.IsNullOrWhiteSpace(args.State))
             {
                 Console.Error.WriteLine("--zip requires --state to be specified.");
                 return 1;
@@ -92,10 +92,10 @@ internal static class RunCommand
 
             if (printArgs)
             {
-                return PrintInvocation(opts);
+                return PrintInvocation(hosting, args);
             }
 
-            Directory.CreateDirectory(opts.Output.FullName);
+            Directory.CreateDirectory(hosting.Output.FullName);
 
             try
             {
@@ -107,12 +107,12 @@ internal static class RunCommand
                         Console.Write($"\rDownloading Synthea {p.dl / 1_000_000}/{p.total / 1_000_000} MB…");
                 });
 
-                var jar = await Program.EnsureJarAsyncFunc(opts.Refresh, progress, cancelToken);
+                var jar = await Program.EnsureJarAsyncFunc(hosting.Refresh, progress, cancelToken);
 
                 if (interactive) Console.WriteLine();
                 Console.WriteLine($"✓ Using {jar.Name}  ({jar.FullName})");
 
-                var psi = CreateProcessStartInfo(opts, jar);
+                var psi = CreateProcessStartInfo(hosting, args, jar);
 
                 using var proc = Program.Runner.Start(psi);
                 using var killReg = cancelToken.Register(() =>
@@ -156,7 +156,7 @@ internal static class RunCommand
         return runCmd;
     }
 
-    internal static List<string> BuildArgumentList(RunOptions o)
+    internal static List<string> BuildArgumentList(SyntheaArgs o)
     {
         var argList = new List<string>();
         if (o.Population.HasValue)
@@ -242,34 +242,34 @@ internal static class RunCommand
         return argList;
     }
 
-    internal static ProcessStartInfo CreateProcessStartInfo(RunOptions o, FileInfo jar)
+    internal static ProcessStartInfo CreateProcessStartInfo(HostingOptions hosting, SyntheaArgs args, FileInfo jar)
     {
-        var psi = new ProcessStartInfo(o.JavaPath)
+        var psi = new ProcessStartInfo(hosting.JavaPath)
         {
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            WorkingDirectory = o.Output.FullName
+            WorkingDirectory = hosting.Output.FullName
         };
         psi.ArgumentList.Add("-jar");
         psi.ArgumentList.Add(jar.FullName);
-        foreach (var a in BuildArgumentList(o))
+        foreach (var a in BuildArgumentList(args))
             psi.ArgumentList.Add(a);
         return psi;
     }
 
-    private static int PrintInvocation(RunOptions o)
+    private static int PrintInvocation(HostingOptions hosting, SyntheaArgs args)
     {
         var cachedJar = JarManager.TryFindCachedJar();
         var jarLabel = cachedJar?.FullName
             ?? "<synthea.jar — not yet cached; run once without --print-args>";
-        Console.WriteLine($"# Java executable: {o.JavaPath}");
+        Console.WriteLine($"# Java executable: {hosting.JavaPath}");
         Console.WriteLine($"# Synthea JAR:     {jarLabel}");
-        Console.WriteLine($"# Working dir:     {o.Output.FullName}");
-        Console.Write(QuoteForShell(o.JavaPath));
+        Console.WriteLine($"# Working dir:     {hosting.Output.FullName}");
+        Console.Write(QuoteForShell(hosting.JavaPath));
         Console.Write(" -jar ");
         Console.Write(QuoteForShell(jarLabel));
-        foreach (var a in BuildArgumentList(o))
+        foreach (var a in BuildArgumentList(args))
         {
             Console.Write(' ');
             Console.Write(QuoteForShell(a));
@@ -285,7 +285,7 @@ internal static class RunCommand
         return "\"" + s.Replace("\"", "\\\"") + "\"";
     }
 
-    private static RunOptions ParseRunOptions(ParseResult parseResult,
+    private static (HostingOptions Hosting, SyntheaArgs Args) ParseRunOptions(ParseResult parseResult,
         Option<bool> refreshOpt,
         Option<string?> javaOpt,
         Option<DirectoryInfo> outputOpt,
@@ -307,10 +307,11 @@ internal static class RunCommand
         Argument<string[]> passthru)
     {
         var javaPathArg = parseResult.GetValue(javaOpt);
-        return new RunOptions(
+        var hosting = new HostingOptions(
             Output: parseResult.GetValue(outputOpt)!,
             Refresh: parseResult.GetValue(refreshOpt),
-            JavaPath: string.IsNullOrWhiteSpace(javaPathArg) ? "java" : javaPathArg!,
+            JavaPath: string.IsNullOrWhiteSpace(javaPathArg) ? "java" : javaPathArg!);
+        var args = new SyntheaArgs(
             State: parseResult.GetValue(stateOpt),
             City: parseResult.GetValue(cityOpt),
             Gender: parseResult.GetValue(genderOpt),
@@ -327,6 +328,7 @@ internal static class RunCommand
             DaysForward: parseResult.GetValue(daysOpt),
             Formats: parseResult.GetValue(formatOpt) ?? Array.Empty<string>(),
             Passthru: parseResult.GetValue(passthru) ?? Array.Empty<string>());
+        return (hosting, args);
     }
 
     // ----- Option-validator helpers ---------------------------------------

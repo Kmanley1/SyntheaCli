@@ -1,9 +1,9 @@
 namespace Synthea.Cli;
 
-internal record RunOptions(
-    DirectoryInfo Output,
-    bool Refresh,
-    string JavaPath,
+// Everything that maps to flags or positional values Synthea itself
+// consumes. BuildArgumentList depends only on this; nothing about
+// hosting (java path, output dir, refresh) belongs here.
+internal record SyntheaArgs(
     string? State,
     string? City,
     string? Gender,
