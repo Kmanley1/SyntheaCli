@@ -234,10 +234,13 @@ internal static class RunCommand
                 argList.Add("--" + kv.Value + "=" + (enable ? "true" : "false"));
             }
         }
-        argList.AddRange(o.Passthru);
+        // Positional state/city/zip must precede passthru tokens. Otherwise a
+        // passthru flag that takes a value (e.g. `--some-flag`) could swallow
+        // "OH" as its value before Synthea sees it as the state. (A-9)
         if (!string.IsNullOrWhiteSpace(o.State)) argList.Add(o.State);
         if (!string.IsNullOrWhiteSpace(o.City)) argList.Add(o.City);
         if (!string.IsNullOrWhiteSpace(o.Zip)) argList.Add(o.Zip);
+        argList.AddRange(o.Passthru);
 
         return argList;
     }
