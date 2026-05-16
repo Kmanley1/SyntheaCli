@@ -98,6 +98,90 @@ public class JarManagerTests : IDisposable
         await Assert.ThrowsAsync<InvalidOperationException>(() => jm.EnsureJarAsync());
     }
 
+    [Fact]
+    public async Task JarPathOverride_SkipsDownloadAndReturnsFile()
+    {
+        // Pre-create a fake "user-supplied" JAR outside the cache.
+        var external = Path.Combine(_tempDir, "external.jar");
+        await File.WriteAllTextAsync(external, "fake");
+        // Use a handler that throws if any HTTP call is made — proves the
+        // override truly skips the network.
+        var jm = new JarManager(new HttpClient(new ThrowingHandler()), _tempDir);
+        var fi = await jm.EnsureJarAsync(overrides: new JarOverrides(JarPath: external));
+        Assert.Equal(external, fi.FullName);
+    }
+
+    [Fact]
+    public async Task JarPathOverride_MissingFile_Throws()
+    {
+        var bogus = Path.Combine(_tempDir, "does-not-exist.jar");
+        var jm = new JarManager(new HttpClient(new ThrowingHandler()), _tempDir);
+        await Assert.ThrowsAsync<FileNotFoundException>(() =>
+            jm.EnsureJarAsync(overrides: new JarOverrides(JarPath: bogus)));
+    }
+
+    [Fact]
+    public async Task GitHubToken_AddsAuthorizationBearerHeader()
+    {
+        var releaseJson = "{\"assets\":[{\"name\":\"synthea-with-dependencies.jar\",\"browser_download_url\":\"http://host/jar\"}]}";
+        var capture = new HeaderCapturingHandler(new Dictionary<string, string>
+        {
+            { "https://api.github.com/repos/synthetichealth/synthea/releases/latest", releaseJson }
+        }, new Dictionary<string, byte[]> { { "http://host/jar", new byte[] { 1 } } });
+        var jm = new JarManager(new HttpClient(capture), _tempDir);
+        await jm.EnsureJarAsync(overrides: new JarOverrides(GitHubToken: "secret-tok"));
+
+        Assert.Contains(capture.SeenAuthHeaders, h => h is { Scheme: "Bearer", Parameter: "secret-tok" });
+    }
+
+    [Fact]
+    public async Task InsistChecksum_ThrowsWhenUpstreamHasNoSha()
+    {
+        var releaseJson = "{\"assets\":[{\"name\":\"synthea-with-dependencies.jar\",\"browser_download_url\":\"http://host/jar\"}]}";
+        var texts = new Dictionary<string, string>
+        {
+            { "https://api.github.com/repos/synthetichealth/synthea/releases/latest", releaseJson }
+        };
+        var bins = new Dictionary<string, byte[]> { { "http://host/jar", new byte[] { 1 } } };
+        var jm = new JarManager(CreateClient(texts, bins), _tempDir);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            jm.EnsureJarAsync(overrides: new JarOverrides(InsistChecksum: true)));
+    }
+
+    private sealed class ThrowingHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            => throw new InvalidOperationException($"Unexpected network call to {request.RequestUri}");
+    }
+
+    private sealed class HeaderCapturingHandler : HttpMessageHandler
+    {
+        private readonly Dictionary<string, string> _texts;
+        private readonly Dictionary<string, byte[]> _bins;
+        public List<System.Net.Http.Headers.AuthenticationHeaderValue?> SeenAuthHeaders { get; } = new();
+
+        public HeaderCapturingHandler(Dictionary<string, string> texts, Dictionary<string, byte[]> bins)
+        {
+            _texts = texts;
+            _bins = bins;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            SeenAuthHeaders.Add(request.Headers.Authorization);
+            var url = request.RequestUri!.ToString();
+            if (_texts.TryGetValue(url, out var text))
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(text) });
+            if (_bins.TryGetValue(url, out var data))
+            {
+                var resp = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(data) };
+                resp.Content.Headers.ContentLength = data.Length;
+                return Task.FromResult(resp);
+            }
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        }
+    }
+
     private sealed class CapturingLoggerProvider : ILoggerProvider
     {
         private readonly List<(LogLevel Level, string Message)> _sink;
