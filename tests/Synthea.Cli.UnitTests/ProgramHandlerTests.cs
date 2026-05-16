@@ -340,6 +340,7 @@ public class ProgramHandlerTests : IDisposable
     {
         private readonly FileInfo _jar;
         public StubJarSource(FileInfo jar) => _jar = jar;
+        public string CachePath => _jar.DirectoryName ?? Path.GetTempPath();
         public FileInfo? TryFindCachedJar() => _jar;
         public Task<FileInfo> EnsureJarAsync(
             bool forceRefresh = false,

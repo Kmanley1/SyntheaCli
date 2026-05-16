@@ -102,6 +102,7 @@ internal static class Program
         root.Options.Add(quietOpt);
 
         root.Subcommands.Add(RunCommand.Build(runner, jarSource, refreshOpt, javaOpt));
+        root.Subcommands.Add(CacheCommand.Build(jarSource));
 
         if (args.Length == 0) args = new[] { "--help" };
         return await root.Parse(args).InvokeAsync();
