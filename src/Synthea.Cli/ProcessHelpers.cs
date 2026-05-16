@@ -16,6 +16,10 @@ internal interface IProcess : IDisposable
     StreamReader StandardError { get; }
     Task WaitForExitAsync();
     int ExitCode { get; }
+
+    // Default no-op so existing test fakes (CapturingRunner.StubProcess,
+    // FakeRunner.FakeProcess) keep working without modification.
+    void Kill(bool entireProcessTree) { }
 }
 
 internal sealed class DefaultProcessRunner : IProcessRunner
@@ -30,6 +34,7 @@ internal sealed class DefaultProcessRunner : IProcessRunner
         public StreamReader StandardError => _proc.StandardError;
         public Task WaitForExitAsync() => _proc.WaitForExitAsync();
         public int ExitCode => _proc.ExitCode;
+        public void Kill(bool entireProcessTree) => _proc.Kill(entireProcessTree);
         public void Dispose() => _proc.Dispose();
     }
 }

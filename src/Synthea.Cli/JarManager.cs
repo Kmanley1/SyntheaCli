@@ -24,6 +24,22 @@ internal static class JarManager
     internal static string? CacheRootOverride { get; set; }
 
     /// <summary>
+    /// Returns the newest cached Synthea JAR if one exists, without any
+    /// network call. Returns null if the cache is empty or missing.
+    /// </summary>
+    internal static FileInfo? TryFindCachedJar()
+    {
+        var cacheRoot = CacheRootOverride ??
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var cacheDir = Path.Combine(cacheRoot, "Synthea.Cli");
+        if (!Directory.Exists(cacheDir)) return null;
+        var cached = Directory.GetFiles(cacheDir, $"*{JarHint}")
+                              .OrderByDescending(File.GetLastWriteTimeUtc)
+                              .FirstOrDefault();
+        return cached is null ? null : new FileInfo(cached);
+    }
+
+    /// <summary>
     /// Ensures the Synthea JAR is present in the local cache.
     /// Returns the full FileInfo.
     /// </summary>

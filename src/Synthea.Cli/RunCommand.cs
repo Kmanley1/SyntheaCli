@@ -5,7 +5,9 @@ using System.CommandLine.Invocation;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Synthea.Cli;
@@ -43,6 +45,10 @@ internal static class RunCommand
         var updatedSnapOpt = CreateUpdatedSnapshotOption();
         var daysForwardOpt = CreateDaysForwardOption();
         var formatOpt = CreateFormatOption();
+        var printArgsOpt = new Option<bool>(
+            "--print-args",
+            "Print the java command line that would be run, then exit without running it. " +
+            "Useful for debugging or scripting. Does not download the JAR.");
         var passthru = CreatePassthruArgument();
 
         runCmd.AddOption(outputOpt);
@@ -61,6 +67,7 @@ internal static class RunCommand
         runCmd.AddOption(updatedSnapOpt);
         runCmd.AddOption(daysForwardOpt);
         runCmd.AddOption(formatOpt);
+        runCmd.AddOption(printArgsOpt);
         runCmd.AddArgument(passthru);
 
         runCmd.TreatUnmatchedTokensAsErrors = false;
@@ -70,8 +77,8 @@ internal static class RunCommand
             var opts = ParseRunOptions(ctx, refreshOpt, javaOpt, outputOpt, stateOpt, cityOpt,
                 genderOpt, ageOpt, moduleDirOpt, moduleOpt, popOpt, seedOpt, configOpt, zipOpt,
                 fhirVerOpt, initialSnapOpt, updatedSnapOpt, daysForwardOpt, formatOpt, passthru);
-
-            Directory.CreateDirectory(opts.Output.FullName);
+            var printArgs = ctx.ParseResult.GetValueForOption(printArgsOpt);
+            var cancelToken = ctx.GetCancellationToken();
 
             if (!string.IsNullOrWhiteSpace(opts.City) && string.IsNullOrWhiteSpace(opts.State))
             {
@@ -86,22 +93,68 @@ internal static class RunCommand
                 return;
             }
 
-            var jar = await Program.EnsureJarAsyncFunc(
-                          opts.Refresh,
-                          new Progress<(long dl, long total)>(p =>
-                              Console.Write($"\rDownloading Synthea {p.dl / 1_000_000}/{p.total / 1_000_000} MB…")),
-                          ctx.GetCancellationToken());
+            if (printArgs)
+            {
+                ctx.ExitCode = PrintInvocation(opts);
+                return;
+            }
 
-            Console.WriteLine($"\n✓ Using {jar.Name}");
+            Directory.CreateDirectory(opts.Output.FullName);
 
-            var psi = CreateProcessStartInfo(opts, jar);
+            try
+            {
+                var interactive = !Console.IsOutputRedirected;
+                if (!interactive) Console.WriteLine("Downloading Synthea JAR...");
+                var progress = new Progress<(long dl, long total)>(p =>
+                {
+                    if (interactive)
+                        Console.Write($"\rDownloading Synthea {p.dl / 1_000_000}/{p.total / 1_000_000} MB…");
+                });
 
-            using var proc = Program.Runner.Start(psi);
-            var pumpOut = Task.Run(() => ProcessHelpers.Relay(proc.StandardOutput, Console.Out));
-            var pumpErr = Task.Run(() => ProcessHelpers.Relay(proc.StandardError, Console.Error));
+                var jar = await Program.EnsureJarAsyncFunc(opts.Refresh, progress, cancelToken);
 
-            await Task.WhenAll(pumpOut, pumpErr, proc.WaitForExitAsync());
-            ctx.ExitCode = proc.ExitCode;
+                if (interactive) Console.WriteLine();
+                Console.WriteLine($"✓ Using {jar.Name}  ({jar.FullName})");
+
+                var psi = CreateProcessStartInfo(opts, jar);
+
+                using var proc = Program.Runner.Start(psi);
+                using var killReg = cancelToken.Register(() =>
+                {
+                    try { proc.Kill(entireProcessTree: true); } catch { /* already exited */ }
+                });
+                var pumpOut = Task.Run(() => ProcessHelpers.Relay(proc.StandardOutput, Console.Out));
+                var pumpErr = Task.Run(() => ProcessHelpers.Relay(proc.StandardError, Console.Error));
+
+                await Task.WhenAll(pumpOut, pumpErr, proc.WaitForExitAsync());
+                ctx.ExitCode = proc.ExitCode;
+            }
+            catch (OperationCanceledException)
+            {
+                Console.Error.WriteLine("Cancelled.");
+                ctx.ExitCode = 130; // conventional SIGINT exit code
+            }
+            catch (HttpRequestException ex)
+            {
+                Console.Error.WriteLine($"Network error reaching GitHub: {ex.Message}");
+                Console.Error.WriteLine("Check your connection, proxy, or GitHub API rate limits.");
+                ctx.ExitCode = 3;
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.Error.WriteLine($"Synthea JAR error: {ex.Message}");
+                ctx.ExitCode = 3;
+            }
+            catch (IOException ex)
+            {
+                Console.Error.WriteLine($"Filesystem error: {ex.Message}");
+                ctx.ExitCode = 2;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Unexpected error ({ex.GetType().Name}): {ex.Message}");
+                ctx.ExitCode = 4;
+            }
         });
 
         return runCmd;
@@ -207,6 +260,33 @@ internal static class RunCommand
         foreach (var a in BuildArgumentList(o))
             psi.ArgumentList.Add(a);
         return psi;
+    }
+
+    private static int PrintInvocation(RunOptions o)
+    {
+        var cachedJar = JarManager.TryFindCachedJar();
+        var jarLabel = cachedJar?.FullName
+            ?? "<synthea.jar — not yet cached; run once without --print-args>";
+        Console.WriteLine($"# Java executable: {o.JavaPath}");
+        Console.WriteLine($"# Synthea JAR:     {jarLabel}");
+        Console.WriteLine($"# Working dir:     {o.Output.FullName}");
+        Console.Write(QuoteForShell(o.JavaPath));
+        Console.Write(" -jar ");
+        Console.Write(QuoteForShell(jarLabel));
+        foreach (var a in BuildArgumentList(o))
+        {
+            Console.Write(' ');
+            Console.Write(QuoteForShell(a));
+        }
+        Console.WriteLine();
+        return 0;
+    }
+
+    private static string QuoteForShell(string s)
+    {
+        if (s.Length == 0) return "\"\"";
+        if (s.IndexOfAny(new[] { ' ', '\t', '"' }) < 0) return s;
+        return "\"" + s.Replace("\"", "\\\"") + "\"";
     }
 
     private static RunOptions ParseRunOptions(InvocationContext ctx,

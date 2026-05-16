@@ -64,9 +64,23 @@ synthea --refresh run -o ./output --population 10 --state TX --city Austin
 
 # Advance 30 days from an initial snapshot and limit to CSV output only
 synthea run -o ./output --initial-snapshot snap.json --days-forward 30 --format CSV
+
+# Print the java invocation that would be run, without running it
+synthea run -o ./output --population 5 --state OH --print-args
 ```
 
 > **Short alias:** `syn` works everywhere `synthea` does.
+
+### Exit codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success (Synthea's own exit code is propagated when the JAR runs) |
+| `1` | Argument validation error (invalid state, ZIP, gender, age range, …) |
+| `2` | Filesystem / I/O error |
+| `3` | External-dependency error (GitHub unreachable, checksum mismatch, missing release asset) |
+| `4` | Unexpected error (catch-all) |
+| `130` | Cancelled by user (Ctrl+C); the child Java process is terminated along with the CLI |
 
 ---
 

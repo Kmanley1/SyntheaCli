@@ -1,6 +1,7 @@
 using System;
 using System.CommandLine;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,6 +14,10 @@ internal static class Program
 
     public static async Task<int> Main(string[] args)
     {
+        // Synthea emits patient names with diacritics; force UTF-8 so they don't
+        // mojibake on Windows code pages (cp437/cp1252).
+        Console.OutputEncoding = Encoding.UTF8;
+
         var root = new RootCommand("CLI wrapper around MITRE Synthea synthetic patient generator");
 
         var refreshOpt = new Option<bool>(
