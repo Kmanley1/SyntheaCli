@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackAsTool>true</PackAsTool>
-    <PackageId>Synthea.Cli</PackageId>
+    <PackageId>synthea-cli</PackageId>
     <ToolCommandName>synthea</ToolCommandName>
     <DotNetCliToolAliases>syn</DotNetCliToolAliases>
     <PackageVersion>1.0.0</PackageVersion>
