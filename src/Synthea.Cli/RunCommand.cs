@@ -374,13 +374,13 @@ internal static class RunCommand
     // resolved here so JarManager doesn't have to know about either. (A-40)
 
     internal static JarOverrides ResolveJarOverrides(HostingOptions hosting)
-        => ResolveJarOverrides(hosting, CliConfig.Load());
+        => ResolveJarOverrides(hosting, CliConfig.Load(), Environment.GetEnvironmentVariable);
 
-    internal static JarOverrides ResolveJarOverrides(HostingOptions hosting, CliConfig config)
+    internal static JarOverrides ResolveJarOverrides(HostingOptions hosting, CliConfig config, Func<string, string?> envGetter)
     {
-        var jarPath = CliConfig.Resolve(hosting.JarPath, "SYNTHEA_CLI_JAR_PATH", config.JarPath);
-        var token = CliConfig.Resolve(null, "GITHUB_TOKEN", config.GitHubToken);
-        var insist = CliConfig.ResolveBool(hosting.InsistChecksum, "SYNTHEA_CLI_INSIST_CHECKSUM", config.InsistChecksum);
+        var jarPath = CliConfig.Resolve(hosting.JarPath, "SYNTHEA_CLI_JAR_PATH", config.JarPath, envGetter);
+        var token = CliConfig.Resolve(null, "GITHUB_TOKEN", config.GitHubToken, envGetter);
+        var insist = CliConfig.ResolveBool(hosting.InsistChecksum, "SYNTHEA_CLI_INSIST_CHECKSUM", config.InsistChecksum, envGetter);
         return new JarOverrides(jarPath, token, insist);
     }
 

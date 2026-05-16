@@ -227,6 +227,7 @@ public class ProgramRefactorTests
 
     private sealed class NoopJarSource : IJarSource
     {
+        public string CachePath => Path.GetTempPath();
         public FileInfo? TryFindCachedJar() => null;
         public Task<FileInfo> EnsureJarAsync(
             bool forceRefresh = false,

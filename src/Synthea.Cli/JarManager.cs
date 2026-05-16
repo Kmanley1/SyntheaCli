@@ -27,6 +27,10 @@ internal sealed record JarOverrides(
 
 internal interface IJarSource
 {
+    // Absolute path to the directory where this source caches JARs. Used by
+    // CacheCommand for `synthea cache list/clear` without requiring callers
+    // to know how the path was resolved.
+    string CachePath { get; }
     FileInfo? TryFindCachedJar();
     Task<FileInfo> EnsureJarAsync(
         bool forceRefresh = false,
@@ -66,6 +70,8 @@ internal sealed class JarManager : IJarSource
         _cacheRootOverride = cacheRootOverride;
         _logger = logger ?? NullLogger<JarManager>.Instance;
     }
+
+    public string CachePath => ResolveCacheDir();
 
     /// <summary>
     /// Returns the newest cached Synthea JAR if one exists, without any

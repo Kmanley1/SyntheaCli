@@ -114,6 +114,20 @@ on GitHub API calls so anonymous runs don't hit the 60 req/hour rate limit.
 fails the run if the upstream release does not publish a `.sha256` asset
 (default off for backward compatibility — recommended on in production CI).
 
+### Cache management
+
+The downloaded Synthea JAR is cached under `%LOCALAPPDATA%\Synthea.Cli`
+on Windows and `~/.local/share/Synthea.Cli` on Linux/macOS. Two
+sub-commands surface the cache directly without needing a file manager:
+
+```bash
+# List cached JARs with their size and last-modified date
+synthea cache list
+
+# Delete every cached JAR (with confirmation; pass --yes to skip)
+synthea cache clear --yes
+```
+
 ### Exit codes
 
 | Code | Meaning |

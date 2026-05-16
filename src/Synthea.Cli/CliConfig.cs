@@ -47,10 +47,17 @@ internal sealed record CliConfig(
     }
 
     // Apply CLI > env > config > default precedence for a string value.
+    // The env-getter overload exists so tests can supply an in-memory map
+    // instead of mutating process-wide environment state, which would race
+    // against parallel tests under the post-A-12 test parallelization.
     public static string? Resolve(string? cliValue, string envVar, string? configValue, string? @default = null)
+        => Resolve(cliValue, envVar, configValue, Environment.GetEnvironmentVariable, @default);
+
+    public static string? Resolve(string? cliValue, string envVar, string? configValue,
+        Func<string, string?> envGetter, string? @default = null)
     {
         if (!string.IsNullOrEmpty(cliValue)) return cliValue;
-        var envValue = Environment.GetEnvironmentVariable(envVar);
+        var envValue = envGetter(envVar);
         if (!string.IsNullOrEmpty(envValue)) return envValue;
         if (!string.IsNullOrEmpty(configValue)) return configValue;
         return @default;
@@ -60,9 +67,13 @@ internal sealed record CliConfig(
     // checks for any of "1", "true", "yes" (case-insensitive); config file
     // value wins if all earlier sources are absent.
     public static bool ResolveBool(bool cliFlag, string envVar, bool? configValue, bool @default = false)
+        => ResolveBool(cliFlag, envVar, configValue, Environment.GetEnvironmentVariable, @default);
+
+    public static bool ResolveBool(bool cliFlag, string envVar, bool? configValue,
+        Func<string, string?> envGetter, bool @default = false)
     {
         if (cliFlag) return true;
-        var env = Environment.GetEnvironmentVariable(envVar);
+        var env = envGetter(envVar);
         if (!string.IsNullOrEmpty(env))
         {
             if (env.Equals("1", StringComparison.Ordinal)) return true;
