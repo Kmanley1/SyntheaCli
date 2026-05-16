@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.CommandLine;
-using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
 using System.Diagnostics;
 using System.IO;
@@ -24,10 +23,11 @@ internal static class RunCommand
     {
         var runCmd = new Command("run", "Generate synthetic health records");
 
-        var outputOpt = new Option<DirectoryInfo>(
-            aliases: new[] { "--output", "-o" },
-            description: "Directory where Synthea will write its output")
-        { IsRequired = true };
+        var outputOpt = new Option<DirectoryInfo>("--output", "-o")
+        {
+            Description = "Directory where Synthea will write its output",
+            Required = true
+        };
 
         var stateOpt = CreateStateOption();
         var cityOpt = CreateCityOption();
@@ -44,58 +44,55 @@ internal static class RunCommand
         var updatedSnapOpt = CreateUpdatedSnapshotOption();
         var daysForwardOpt = CreateDaysForwardOption();
         var formatOpt = CreateFormatOption();
-        var printArgsOpt = new Option<bool>(
-            "--print-args",
-            "Print the java command line that would be run, then exit without running it. " +
-            "Useful for debugging or scripting. Does not download the JAR.");
+        var printArgsOpt = new Option<bool>("--print-args")
+        {
+            Description = "Print the java command line that would be run, then exit without running it. " +
+                          "Useful for debugging or scripting. Does not download the JAR."
+        };
         var passthru = CreatePassthruArgument();
 
-        runCmd.AddOption(outputOpt);
-        runCmd.AddOption(stateOpt);
-        runCmd.AddOption(cityOpt);
-        runCmd.AddOption(genderOpt);
-        runCmd.AddOption(ageOpt);
-        runCmd.AddOption(moduleDirOpt);
-        runCmd.AddOption(moduleOpt);
-        runCmd.AddOption(popOpt);
-        runCmd.AddOption(seedOpt);
-        runCmd.AddOption(configOpt);
-        runCmd.AddOption(zipOpt);
-        runCmd.AddOption(fhirVerOpt);
-        runCmd.AddOption(initialSnapOpt);
-        runCmd.AddOption(updatedSnapOpt);
-        runCmd.AddOption(daysForwardOpt);
-        runCmd.AddOption(formatOpt);
-        runCmd.AddOption(printArgsOpt);
-        runCmd.AddArgument(passthru);
+        runCmd.Options.Add(outputOpt);
+        runCmd.Options.Add(stateOpt);
+        runCmd.Options.Add(cityOpt);
+        runCmd.Options.Add(genderOpt);
+        runCmd.Options.Add(ageOpt);
+        runCmd.Options.Add(moduleDirOpt);
+        runCmd.Options.Add(moduleOpt);
+        runCmd.Options.Add(popOpt);
+        runCmd.Options.Add(seedOpt);
+        runCmd.Options.Add(configOpt);
+        runCmd.Options.Add(zipOpt);
+        runCmd.Options.Add(fhirVerOpt);
+        runCmd.Options.Add(initialSnapOpt);
+        runCmd.Options.Add(updatedSnapOpt);
+        runCmd.Options.Add(daysForwardOpt);
+        runCmd.Options.Add(formatOpt);
+        runCmd.Options.Add(printArgsOpt);
+        runCmd.Arguments.Add(passthru);
 
         runCmd.TreatUnmatchedTokensAsErrors = false;
 
-        runCmd.SetHandler(async (InvocationContext ctx) =>
+        runCmd.SetAction(async (ParseResult parseResult, CancellationToken cancelToken) =>
         {
-            var opts = ParseRunOptions(ctx, refreshOpt, javaOpt, outputOpt, stateOpt, cityOpt,
+            var opts = ParseRunOptions(parseResult, refreshOpt, javaOpt, outputOpt, stateOpt, cityOpt,
                 genderOpt, ageOpt, moduleDirOpt, moduleOpt, popOpt, seedOpt, configOpt, zipOpt,
                 fhirVerOpt, initialSnapOpt, updatedSnapOpt, daysForwardOpt, formatOpt, passthru);
-            var printArgs = ctx.ParseResult.GetValueForOption(printArgsOpt);
-            var cancelToken = ctx.GetCancellationToken();
+            var printArgs = parseResult.GetValue(printArgsOpt);
 
             if (!string.IsNullOrWhiteSpace(opts.City) && string.IsNullOrWhiteSpace(opts.State))
             {
                 Console.Error.WriteLine("--city requires --state to be specified.");
-                ctx.ExitCode = 1;
-                return;
+                return 1;
             }
             if (!string.IsNullOrWhiteSpace(opts.Zip) && string.IsNullOrWhiteSpace(opts.State))
             {
                 Console.Error.WriteLine("--zip requires --state to be specified.");
-                ctx.ExitCode = 1;
-                return;
+                return 1;
             }
 
             if (printArgs)
             {
-                ctx.ExitCode = PrintInvocation(opts);
-                return;
+                return PrintInvocation(opts);
             }
 
             Directory.CreateDirectory(opts.Output.FullName);
@@ -126,33 +123,33 @@ internal static class RunCommand
                 var pumpErr = Task.Run(() => ProcessHelpers.Relay(proc.StandardError, Console.Error));
 
                 await Task.WhenAll(pumpOut, pumpErr, proc.WaitForExitAsync());
-                ctx.ExitCode = proc.ExitCode;
+                return proc.ExitCode;
             }
             catch (OperationCanceledException)
             {
                 Console.Error.WriteLine("Cancelled.");
-                ctx.ExitCode = 130; // conventional SIGINT exit code
+                return 130; // conventional SIGINT exit code
             }
             catch (HttpRequestException ex)
             {
                 Console.Error.WriteLine($"Network error reaching GitHub: {ex.Message}");
                 Console.Error.WriteLine("Check your connection, proxy, or GitHub API rate limits.");
-                ctx.ExitCode = 3;
+                return 3;
             }
             catch (InvalidOperationException ex)
             {
                 Console.Error.WriteLine($"Synthea JAR error: {ex.Message}");
-                ctx.ExitCode = 3;
+                return 3;
             }
             catch (IOException ex)
             {
                 Console.Error.WriteLine($"Filesystem error: {ex.Message}");
-                ctx.ExitCode = 2;
+                return 2;
             }
             catch (Exception ex)
             {
                 Console.Error.WriteLine($"Unexpected error ({ex.GetType().Name}): {ex.Message}");
-                ctx.ExitCode = 4;
+                return 4;
             }
         });
 
@@ -288,7 +285,7 @@ internal static class RunCommand
         return "\"" + s.Replace("\"", "\\\"") + "\"";
     }
 
-    private static RunOptions ParseRunOptions(InvocationContext ctx,
+    private static RunOptions ParseRunOptions(ParseResult parseResult,
         Option<bool> refreshOpt,
         Option<string?> javaOpt,
         Option<DirectoryInfo> outputOpt,
@@ -309,49 +306,51 @@ internal static class RunCommand
         Option<string[]> formatOpt,
         Argument<string[]> passthru)
     {
-        var javaPathArg = ctx.ParseResult.GetValueForOption(javaOpt);
+        var javaPathArg = parseResult.GetValue(javaOpt);
         return new RunOptions(
-            Output: ctx.ParseResult.GetValueForOption(outputOpt)!,
-            Refresh: ctx.ParseResult.GetValueForOption(refreshOpt),
+            Output: parseResult.GetValue(outputOpt)!,
+            Refresh: parseResult.GetValue(refreshOpt),
             JavaPath: string.IsNullOrWhiteSpace(javaPathArg) ? "java" : javaPathArg!,
-            State: ctx.ParseResult.GetValueForOption(stateOpt),
-            City: ctx.ParseResult.GetValueForOption(cityOpt),
-            Gender: ctx.ParseResult.GetValueForOption(genderOpt),
-            AgeRange: ctx.ParseResult.GetValueForOption(ageOpt),
-            ModuleDir: ctx.ParseResult.GetValueForOption(moduleDirOpt),
-            Modules: ctx.ParseResult.GetValueForOption(moduleOpt),
-            Population: ctx.ParseResult.GetValueForOption(popOpt),
-            Seed: ctx.ParseResult.GetValueForOption(seedOpt),
-            Config: ctx.ParseResult.GetValueForOption(configOpt),
-            Zip: ctx.ParseResult.GetValueForOption(zipOpt),
-            FhirVersion: ctx.ParseResult.GetValueForOption(fhirOpt),
-            InitialSnapshot: ctx.ParseResult.GetValueForOption(initSnapOpt),
-            UpdatedSnapshot: ctx.ParseResult.GetValueForOption(updSnapOpt),
-            DaysForward: ctx.ParseResult.GetValueForOption(daysOpt),
-            Formats: ctx.ParseResult.GetValueForOption(formatOpt) ?? Array.Empty<string>(),
-            Passthru: ctx.ParseResult.GetValueForArgument(passthru));
+            State: parseResult.GetValue(stateOpt),
+            City: parseResult.GetValue(cityOpt),
+            Gender: parseResult.GetValue(genderOpt),
+            AgeRange: parseResult.GetValue(ageOpt),
+            ModuleDir: parseResult.GetValue(moduleDirOpt),
+            Modules: parseResult.GetValue(moduleOpt),
+            Population: parseResult.GetValue(popOpt),
+            Seed: parseResult.GetValue(seedOpt),
+            Config: parseResult.GetValue(configOpt),
+            Zip: parseResult.GetValue(zipOpt),
+            FhirVersion: parseResult.GetValue(fhirOpt),
+            InitialSnapshot: parseResult.GetValue(initSnapOpt),
+            UpdatedSnapshot: parseResult.GetValue(updSnapOpt),
+            DaysForward: parseResult.GetValue(daysOpt),
+            Formats: parseResult.GetValue(formatOpt) ?? Array.Empty<string>(),
+            Passthru: parseResult.GetValue(passthru) ?? Array.Empty<string>());
     }
 
     // ----- Option-validator helpers ---------------------------------------
     //
     // Every Create*Option method below shares the same pattern: "if a value
-    // was supplied, run a check and set r.ErrorMessage when it fails." Two
-    // helpers fold that pattern away so each option declaration shows only
-    // the rule itself, not the boilerplate around it.
+    // was supplied, run a check and add an error when it fails." Two helpers
+    // fold that pattern away so each option declaration shows only the rule
+    // itself. In System.CommandLine 2.0 GA the validator delegate is
+    // Action<OptionResult> — the beta-era named ValidateSymbolResult<T>
+    // type is gone (notes §5.4 gotcha).
 
-    private static ValidateSymbolResult<OptionResult> SingleTokenValidator(Func<string, string?> check) => r =>
+    private static Action<OptionResult> SingleTokenValidator(Func<string, string?> check) => r =>
     {
         if (r.Tokens.Count == 0) return;
         var err = check(r.Tokens[0].Value);
-        if (err is not null) r.ErrorMessage = err;
+        if (err is not null) r.AddError(err);
     };
 
-    private static ValidateSymbolResult<OptionResult> MultiTokenValidator(Func<string, string?> check) => r =>
+    private static Action<OptionResult> MultiTokenValidator(Func<string, string?> check) => r =>
     {
         foreach (var t in r.Tokens)
         {
             var err = check(t.Value);
-            if (err is not null) { r.ErrorMessage = err; return; }
+            if (err is not null) { r.AddError(err); return; }
         }
     };
 
@@ -363,25 +362,27 @@ internal static class RunCommand
         // allowlist silently rejected DC, PR, GU, VI, and any future
         // Synthea-supported geo codes. Defer the "is this a real place?"
         // check to Synthea itself, which owns the geo data.
-        var opt = new Option<string?>("--state",
-            "Two-letter state/territory code (e.g. OH, TX, DC, PR). Format-only check; Synthea rejects unknown codes itself.");
-        opt.AddValidator(SingleTokenValidator(v =>
+        var opt = new Option<string?>("--state")
+        {
+            Description = "Two-letter state/territory code (e.g. OH, TX, DC, PR). Format-only check; Synthea rejects unknown codes itself."
+        };
+        opt.Validators.Add(SingleTokenValidator(v =>
             v.Length == 2 && v.All(char.IsLetter) ? null : "State code must be exactly two letters."));
         return opt;
     }
 
     private static Option<string?> CreateCityOption()
     {
-        var opt = new Option<string?>("--city", "City name (optional second positional arg after state)");
-        opt.AddValidator(SingleTokenValidator(v =>
+        var opt = new Option<string?>("--city") { Description = "City name (optional second positional arg after state)" };
+        opt.Validators.Add(SingleTokenValidator(v =>
             string.IsNullOrWhiteSpace(v) ? "City name cannot be empty." : null));
         return opt;
     }
 
     private static Option<string?> CreateGenderOption()
     {
-        var opt = new Option<string?>("--gender", "Patient gender filter (M or F)");
-        opt.AddValidator(SingleTokenValidator(v =>
+        var opt = new Option<string?>("--gender") { Description = "Patient gender filter (M or F)" };
+        opt.Validators.Add(SingleTokenValidator(v =>
         {
             var g = v.ToUpperInvariant();
             return g == "M" || g == "F" ? null : "Gender must be 'M' or 'F'.";
@@ -391,8 +392,8 @@ internal static class RunCommand
 
     private static Option<string?> CreateAgeRangeOption()
     {
-        var opt = new Option<string?>("--age-range", "Age range filter as min-max");
-        opt.AddValidator(SingleTokenValidator(v =>
+        var opt = new Option<string?>("--age-range") { Description = "Age range filter as min-max" };
+        opt.Validators.Add(SingleTokenValidator(v =>
         {
             var parts = v.Split('-', 2);
             return parts.Length == 2
@@ -407,56 +408,60 @@ internal static class RunCommand
 
     private static Option<DirectoryInfo?> CreateModuleDirOption()
     {
-        var opt = new Option<DirectoryInfo?>("--module-dir", "Directory of custom modules");
-        opt.AddValidator(SingleTokenValidator(v =>
+        var opt = new Option<DirectoryInfo?>("--module-dir") { Description = "Directory of custom modules" };
+        opt.Validators.Add(SingleTokenValidator(v =>
             Directory.Exists(v) ? null : "Module directory does not exist."));
         return opt;
     }
 
     private static Option<string[]> CreateModuleOption()
     {
-        var opt = new Option<string[]>("--module", "Specific disease modules") { Arity = ArgumentArity.ZeroOrMore };
-        opt.AddValidator(MultiTokenValidator(v =>
+        var opt = new Option<string[]>("--module")
+        {
+            Description = "Specific disease modules",
+            Arity = ArgumentArity.ZeroOrMore
+        };
+        opt.Validators.Add(MultiTokenValidator(v =>
             string.IsNullOrWhiteSpace(v) ? "Module name cannot be empty." : null));
         return opt;
     }
 
     private static Option<int?> CreatePopulationOption()
     {
-        var opt = new Option<int?>(aliases: new[] { "--population", "-p" }, description: "Number of patients to generate");
-        opt.AddValidator(SingleTokenValidator(v =>
+        var opt = new Option<int?>("--population", "-p") { Description = "Number of patients to generate" };
+        opt.Validators.Add(SingleTokenValidator(v =>
             int.TryParse(v, out var n) && n > 0 ? null : "Population must be a positive integer."));
         return opt;
     }
 
     private static Option<int?> CreateSeedOption()
     {
-        var opt = new Option<int?>(aliases: new[] { "--seed", "-s" }, description: "Random seed for deterministic output");
-        opt.AddValidator(SingleTokenValidator(v =>
+        var opt = new Option<int?>("--seed", "-s") { Description = "Random seed for deterministic output" };
+        opt.Validators.Add(SingleTokenValidator(v =>
             int.TryParse(v, out _) ? null : "Random seed must be an integer."));
         return opt;
     }
 
     private static Option<FileInfo?> CreateConfigOption()
     {
-        var opt = new Option<FileInfo?>(aliases: new[] { "--config", "-c" }, description: "Path to Synthea configuration file");
-        opt.AddValidator(SingleTokenValidator(v =>
+        var opt = new Option<FileInfo?>("--config", "-c") { Description = "Path to Synthea configuration file" };
+        opt.Validators.Add(SingleTokenValidator(v =>
             File.Exists(v) ? null : "Configuration file does not exist."));
         return opt;
     }
 
     private static Option<string?> CreateZipOption()
     {
-        var opt = new Option<string?>("--zip", "ZIP code (requires --state)");
-        opt.AddValidator(SingleTokenValidator(v =>
+        var opt = new Option<string?>("--zip") { Description = "ZIP code (requires --state)" };
+        opt.Validators.Add(SingleTokenValidator(v =>
             Regex.IsMatch(v, @"^\d{5}(?:-\d{4})?$") ? null : "ZIP code must be 5 digits or 5+4."));
         return opt;
     }
 
     private static Option<string?> CreateFhirVersionOption()
     {
-        var opt = new Option<string?>("--fhir-version", "FHIR version (R4 or STU3)");
-        opt.AddValidator(SingleTokenValidator(v =>
+        var opt = new Option<string?>("--fhir-version") { Description = "FHIR version (R4 or STU3)" };
+        opt.Validators.Add(SingleTokenValidator(v =>
         {
             var u = v.ToUpperInvariant();
             return u == "R4" || u == "STU3" ? null : "FHIR version must be R4 or STU3.";
@@ -466,16 +471,16 @@ internal static class RunCommand
 
     private static Option<FileInfo?> CreateInitialSnapshotOption()
     {
-        var opt = new Option<FileInfo?>("--initial-snapshot", "Path to initial snapshot to load (-i)");
-        opt.AddValidator(SingleTokenValidator(v =>
+        var opt = new Option<FileInfo?>("--initial-snapshot") { Description = "Path to initial snapshot to load (-i)" };
+        opt.Validators.Add(SingleTokenValidator(v =>
             File.Exists(v) ? null : "Initial snapshot file does not exist."));
         return opt;
     }
 
     private static Option<FileInfo?> CreateUpdatedSnapshotOption()
     {
-        var opt = new Option<FileInfo?>("--updated-snapshot", "Path where updated snapshot will be written (-u)");
-        opt.AddValidator(SingleTokenValidator(v =>
+        var opt = new Option<FileInfo?>("--updated-snapshot") { Description = "Path where updated snapshot will be written (-u)" };
+        opt.Validators.Add(SingleTokenValidator(v =>
         {
             var dir = Path.GetDirectoryName(v);
             return !string.IsNullOrWhiteSpace(dir) && Directory.Exists(dir)
@@ -487,18 +492,20 @@ internal static class RunCommand
 
     private static Option<int?> CreateDaysForwardOption()
     {
-        var opt = new Option<int?>("--days-forward", "Advance time from snapshot by N days (-t)");
-        opt.AddValidator(SingleTokenValidator(v =>
+        var opt = new Option<int?>("--days-forward") { Description = "Advance time from snapshot by N days (-t)" };
+        opt.Validators.Add(SingleTokenValidator(v =>
             int.TryParse(v, out var n) && n > 0 ? null : "Days forward must be a positive integer."));
         return opt;
     }
 
     private static Option<string[]> CreateFormatOption()
     {
-        var opt = new Option<string[]>("--format",
-            "Output formats to generate (FHIR, CSV, CCDA, BULKFHIR, CPCDS)")
-        { Arity = ArgumentArity.ZeroOrMore };
-        opt.AddValidator(MultiTokenValidator(v =>
+        var opt = new Option<string[]>("--format")
+        {
+            Description = "Output formats to generate (FHIR, CSV, CCDA, BULKFHIR, CPCDS)",
+            Arity = ArgumentArity.ZeroOrMore
+        };
+        opt.Validators.Add(MultiTokenValidator(v =>
             AllowedFormats.Contains(v) ? null : $"Unsupported format '{v}'."));
         return opt;
     }

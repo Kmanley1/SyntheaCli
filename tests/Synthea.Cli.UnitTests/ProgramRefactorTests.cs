@@ -1,5 +1,9 @@
+using System;
 using System.IO;
 using System.Collections.Generic;
+using System.CommandLine;
+using System.CommandLine.Parsing;
+using System.Linq;
 using Synthea.Cli;
 using Xunit;
 
@@ -7,6 +11,32 @@ namespace Synthea.Cli.UnitTests;
 
 public class ProgramRefactorTests
 {
+    // Regression guard for notes §5.4: in System.CommandLine 2.0 GA the
+    // validator delegate is Action<OptionResult>. The beta-era named
+    // ValidateSymbolResult<T> type was removed; a relapse to a beta-style
+    // signature would not even compile, but this test pins the contract
+    // so a future bump doesn't silently change it under us.
+    [Fact]
+    public void RunCommand_Validators_UseActionOptionResultDelegate()
+    {
+        var refreshOpt = new Option<bool>("--refresh");
+        var javaOpt = new Option<string?>("--java-path");
+        var run = RunCommand.Build(refreshOpt, javaOpt);
+
+        var stateOpt = run.Options.Single(o => o.Name == "--state");
+        Assert.NotEmpty(stateOpt.Validators);
+        foreach (var v in stateOpt.Validators)
+        {
+            Assert.IsType<Action<OptionResult>>(v);
+        }
+
+        // Sanity: the named delegate from the beta API must not exist on
+        // any validator. If a future bump reintroduces a named delegate
+        // and we accidentally type-annotate against it, this catches it.
+        var beta = Type.GetType("System.CommandLine.Parsing.ValidateSymbolResult`1, System.CommandLine");
+        Assert.Null(beta);
+    }
+
     [Fact]
     public void BuildArgumentList_BuildsExpectedFlags()
     {

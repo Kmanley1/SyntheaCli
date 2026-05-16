@@ -19,12 +19,6 @@ updates:
           - "xunit*"
           - "Microsoft.NET.Test.Sdk"
           - "coverlet.*"
-    ignore:
-      # The 2.0.0-beta4 -> 2.0.x GA jump rewrites the InvocationContext /
-      # SetHandler / GetValueForOption / IsRequired API surface used in
-      # RunCommand.cs. Tracked separately as design-review finding A-15;
-      # remove this entry when that migration commit lands.
-      - dependency-name: "System.CommandLine"
 
   - package-ecosystem: github-actions
     directory: /

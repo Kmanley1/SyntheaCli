@@ -20,21 +20,24 @@ internal static class Program
 
         var root = new RootCommand("CLI wrapper around MITRE Synthea synthetic patient generator");
 
-        var refreshOpt = new Option<bool>(
-            "--refresh",
-            "Ignore cached JAR and download the newest release");
+        var refreshOpt = new Option<bool>("--refresh")
+        {
+            Description = "Ignore cached JAR and download the newest release",
+            Recursive = true
+        };
 
-        var javaOpt = new Option<string?>(
-            "--java-path",
-            () => null,
-            "Full path to the Java executable (defaults to 'java' on PATH)");
+        var javaOpt = new Option<string?>("--java-path")
+        {
+            Description = "Full path to the Java executable (defaults to 'java' on PATH)",
+            Recursive = true
+        };
 
-        root.AddGlobalOption(refreshOpt);
-        root.AddGlobalOption(javaOpt);
+        root.Options.Add(refreshOpt);
+        root.Options.Add(javaOpt);
 
-        root.AddCommand(RunCommand.Build(refreshOpt, javaOpt));
+        root.Subcommands.Add(RunCommand.Build(refreshOpt, javaOpt));
 
         if (args.Length == 0) args = new[] { "--help" };
-        return await root.InvokeAsync(args);
+        return await root.Parse(args).InvokeAsync();
     }
 }
