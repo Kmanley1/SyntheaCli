@@ -49,31 +49,14 @@ public class SyntheaCliWrapperRunTests : IDisposable
         }
     }
 
-    private static string? FindRepoRoot()
-    {
-        // Walk up from the test assembly's location until we find the solution
-        // file. Robust to changes in BaseOutputPath / working directory.
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null)
-        {
-            if (File.Exists(Path.Combine(dir.FullName, "Synthea.Cli.sln")))
-                return dir.FullName;
-            dir = dir.Parent;
-        }
-        return null;
-    }
-
     private static (string? dllPath, string[] searched) FindCliDll()
     {
-        var root = FindRepoRoot();
-        if (root is null) return (null, Array.Empty<string>());
-        // Prefer Release (CI publishes Release) but accept Debug for local dev.
-        var candidates = new[]
-        {
-            Path.Combine(root, "src", "Synthea.Cli", "bin", "Release", "net8.0", "Synthea.Cli.dll"),
-            Path.Combine(root, "src", "Synthea.Cli", "bin", "Debug", "net8.0", "Synthea.Cli.dll"),
-        };
-        return (candidates.FirstOrDefault(File.Exists), candidates);
+        // The test project references Synthea.Cli, so MSBuild copies
+        // Synthea.Cli.dll next to the test assembly. AppContext.BaseDirectory
+        // is the only path we need to look in — no walk-up to the repo root,
+        // no scanning for src/.../bin/<Config>/<Tfm>/.
+        var candidate = Path.Combine(AppContext.BaseDirectory, "Synthea.Cli.dll");
+        return (File.Exists(candidate) ? candidate : null, new[] { candidate });
     }
 
     private async Task<(int exitCode, string stdOut, string stdErr)> RunCliCommandAsync(string args, string? workingDir = null)
