@@ -1,25 +1,22 @@
 <!-- Directory.Build.props -->
 <Project>
-  <PropertyGroup>
-    <RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
+  <!--
+    Previously this file redirected BaseOutputPath and BaseIntermediateOutputPath
+    to a shared artifacts/ tree at the repo root. That collapsed all three
+    projects (Synthea.Cli, Synthea.Cli.UnitTests, Synthea.Cli.IntegrationTests)
+    into a single output directory, so each test project's
+    testhost.runtimeconfig.json was clobbered by the next project to build,
+    and dotnet test (with no-build) then failed to launch with:
 
-    <!-- Final outputs -->
-    <BaseOutputPath>$(RepoRoot)artifacts\bin\</BaseOutputPath>
+      A fatal error was encountered. The library libhostpolicy.so /
+      hostpolicy.dll required to execute the application was not found...
+      The application was run as a self-contained app because
+      testhost.runtimeconfig.json was not found.
 
-    <!-- Intermediates -->
-    <BaseIntermediateOutputPath>$(RepoRoot)artifacts\obj\</BaseIntermediateOutputPath>
-
-    <!-- Tell the SDK that anything in artifacts\obj\ is *not*
-         part of the hand-written source set -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);artifacts\obj\**</DefaultItemExcludes>
-    <DefaultItemExcludesInProjectFolder>
-      $(DefaultItemExcludesInProjectFolder);artifacts\obj\**
-    </DefaultItemExcludesInProjectFolder>
-  </PropertyGroup>
-
+    Reverting to per-project bin/obj (the SDK default) avoids the collision.
+  -->
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-  
 </Project>

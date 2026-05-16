@@ -184,9 +184,8 @@ SyntheaCli/
 ├─ .gitignore
 ├─ README.md
 ├─ Synthea.Cli.code-workspace    # VS Code workspace file
-├─ Directory.Build.props         # MSBuild configuration with artifacts structure
+├─ Directory.Build.props         # Shared MSBuild settings (TreatWarningsAsErrors, Nullable)
 ├─ Synthea.Cli.sln               # Visual Studio solution
-├─ artifacts/                    # Build outputs (bin/ and obj/ subdirectories)
 ├─ tools/
 │   ├─ setup.sh                  # CI / Linux build script
 │   ├─ setup.ps1                 # CI / Windows build script  

@@ -52,28 +52,43 @@ public class SyntheaCliWrapperRunTests : IDisposable
         }
     }
 
+    private static string? FindRepoRoot()
+    {
+        // Walk up from the test assembly's location until we find the solution
+        // file. Robust to changes in BaseOutputPath / working directory.
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "Synthea.Cli.sln")))
+                return dir.FullName;
+            dir = dir.Parent;
+        }
+        return null;
+    }
+
+    private static (string? dllPath, string[] searched) FindCliDll()
+    {
+        var root = FindRepoRoot();
+        if (root is null) return (null, Array.Empty<string>());
+        // Prefer Release (CI publishes Release) but accept Debug for local dev.
+        var candidates = new[]
+        {
+            Path.Combine(root, "src", "Synthea.Cli", "bin", "Release", "net8.0", "Synthea.Cli.dll"),
+            Path.Combine(root, "src", "Synthea.Cli", "bin", "Debug", "net8.0", "Synthea.Cli.dll"),
+        };
+        return (candidates.FirstOrDefault(File.Exists), candidates);
+    }
+
     private async Task<(int exitCode, string stdOut, string stdErr)> RunCliCommandAsync(string args, string? workingDir = null)
     {
-        // Try multiple possible paths for the DLL (Release first, then Debug for development)
-        var possibleDllPaths = new[]
-        {
-            // Primary Release paths
-            Path.GetFullPath(Path.Combine("..", "..", "..", "..", "artifacts", "bin", "Release", "net8.0", "Synthea.Cli.dll")),
-            Path.GetFullPath(Path.Combine("..", "..", "..", "..", "src", "Synthea.Cli", "bin", "Release", "net8.0", "Synthea.Cli.dll")),
-            Path.GetFullPath(Path.Combine("..", "..", "..", "..", "Synthea.Cli", "bin", "Release", "net8.0", "Synthea.Cli.dll")),
-            // Fallback Debug paths for development
-            Path.GetFullPath(Path.Combine("..", "..", "..", "..", "artifacts", "bin", "Debug", "net8.0", "Synthea.Cli.dll")),
-            Path.GetFullPath(Path.Combine("..", "..", "..", "..", "src", "Synthea.Cli", "bin", "Debug", "net8.0", "Synthea.Cli.dll"))
-        };
-        
-        string? dllPath = possibleDllPaths.FirstOrDefault(File.Exists);
-        bool dllExists = dllPath != null;
+        var (dllPath, searched) = FindCliDll();
+        bool dllExists = dllPath is not null;
         bool globalExists = CommandExists("synthea");
-        
+
         if (!dllExists && !globalExists)
         {
-            var searchedPaths = string.Join("\n  ", possibleDllPaths);
-            throw new SkipTestException($"Synthea CLI wrapper not found. Skipping integration test.\nSearched paths:\n  {searchedPaths}\n\nTo fix this, run: dotnet build -c Release");
+            var searchedPaths = string.Join("\n  ", searched);
+            throw new SkipTestException($"Synthea CLI wrapper not found. Skipping integration test.\nSearched paths:\n  {searchedPaths}\n\nTo fix this, run: dotnet build");
         }
         if (!CommandExists("java"))
         {
@@ -126,16 +141,9 @@ public class SyntheaCliWrapperRunTests : IDisposable
                        !Path.GetFileName(f).Contains(PractitionerInfo))
             .ToArray();
             
-        // Debug: Log file details if count doesn't match expected
-        if (patientFiles.Length != population)
-        {
-            var allFileNames = string.Join(", ", allFiles.Select(Path.GetFileName));
-            var patientFileNames = string.Join(", ", patientFiles.Select(Path.GetFileName));
-            throw new InvalidOperationException(
-                $"Expected {population} patient files, found {patientFiles.Length}. " +
-                $"All files: [{allFileNames}]. Patient files: [{patientFileNames}]");
-        }
-        
+        // Synthea's -p N means "N living patients at simulation end"; the FHIR
+        // exporter also writes deceased patients generated along the way, so
+        // the actual file count is >= N (not == N). Don't fail on that here.
         return patientFiles;
     }
 
@@ -157,7 +165,9 @@ public class SyntheaCliWrapperRunTests : IDisposable
         try
         {
             var files = await RunSyntheaAndGetPatientFiles(population);
-            Assert.Equal(expectedCount, files.Length);
+            // See RunSyntheaAndGetPatientFiles: file count is >= population.
+            Assert.True(files.Length >= expectedCount,
+                $"Expected at least {expectedCount} patient file(s), found {files.Length}.");
         }
         catch (SkipTestException ex)
         {
