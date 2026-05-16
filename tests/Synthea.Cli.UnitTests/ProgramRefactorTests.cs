@@ -59,6 +59,13 @@ public class ProgramRefactorTests
             Passthru: new[] { "--extra" });
 
         var list = RunCommand.BuildArgumentList(args);
+        // Positional state/city/zip must come BEFORE passthru tokens so a
+        // passthru value-flag can't consume the state code as its value. (A-9)
+        var stateIdx = list.IndexOf("OH");
+        var passthruIdx = list.IndexOf("--extra");
+        Assert.True(stateIdx >= 0, "expected --state to appear in arg list");
+        Assert.True(passthruIdx >= 0, "expected passthru token to appear in arg list");
+        Assert.True(stateIdx < passthruIdx, $"state idx {stateIdx} should precede passthru idx {passthruIdx}");
         Assert.Contains("-p", list);
         Assert.Contains("5", list);
         Assert.Contains("-s", list);
@@ -79,6 +86,41 @@ public class ProgramRefactorTests
         Assert.Contains("Cleveland", list);
         Assert.Contains("44101", list);
         Assert.Contains("--extra", list);
+    }
+
+    [Fact]
+    public void Passthru_DoesNotSwallowPositionalState()
+    {
+        // A passthru value-flag like `--some-flag OH` would, in the old
+        // ordering, see "OH" emitted adjacent to the flag and consume it.
+        // The fix is structural: emit state/city/zip first, passthru last.
+        var args = new SyntheaArgs(
+            State: "OH",
+            City: null,
+            Gender: null,
+            AgeRange: null,
+            ModuleDir: null,
+            Modules: null,
+            Population: null,
+            Seed: null,
+            Config: null,
+            Zip: null,
+            FhirVersion: null,
+            InitialSnapshot: null,
+            UpdatedSnapshot: null,
+            DaysForward: null,
+            Formats: System.Array.Empty<string>(),
+            Passthru: new[] { "--some-flag" });
+
+        var list = RunCommand.BuildArgumentList(args);
+        var stateIdx = list.IndexOf("OH");
+        var flagIdx = list.IndexOf("--some-flag");
+        Assert.True(stateIdx >= 0);
+        Assert.True(flagIdx >= 0);
+        Assert.True(stateIdx < flagIdx,
+            $"state position must precede passthru flag; got state={stateIdx} flag={flagIdx}");
+        // And state must not appear adjacent-after the flag.
+        Assert.NotEqual(flagIdx + 1, stateIdx);
     }
 
     [Fact]
