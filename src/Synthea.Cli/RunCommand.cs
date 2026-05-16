@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
+using System.CommandLine.Parsing;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -14,11 +15,9 @@ namespace Synthea.Cli;
 
 internal static class RunCommand
 {
-    private static readonly HashSet<string> ValidStates = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> AllowedFormats = new(StringComparer.OrdinalIgnoreCase)
     {
-        "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS",
-        "KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY",
-        "NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"
+        "fhir", "csv", "ccda", "bulkfhir", "bulk-fhir", "cpcds"
     };
 
     internal static Command Build(Option<bool> refreshOpt, Option<string?> javaOpt)
@@ -333,220 +332,180 @@ internal static class RunCommand
             Passthru: ctx.ParseResult.GetValueForArgument(passthru));
     }
 
+    // ----- Option-validator helpers ---------------------------------------
+    //
+    // Every Create*Option method below shares the same pattern: "if a value
+    // was supplied, run a check and set r.ErrorMessage when it fails." Two
+    // helpers fold that pattern away so each option declaration shows only
+    // the rule itself, not the boilerplate around it.
+
+    private static ValidateSymbolResult<OptionResult> SingleTokenValidator(Func<string, string?> check) => r =>
+    {
+        if (r.Tokens.Count == 0) return;
+        var err = check(r.Tokens[0].Value);
+        if (err is not null) r.ErrorMessage = err;
+    };
+
+    private static ValidateSymbolResult<OptionResult> MultiTokenValidator(Func<string, string?> check) => r =>
+    {
+        foreach (var t in r.Tokens)
+        {
+            var err = check(t.Value);
+            if (err is not null) { r.ErrorMessage = err; return; }
+        }
+    };
+
+    // ----- Per-option factories -------------------------------------------
+
     private static Option<string?> CreateStateOption()
     {
-        var stateOpt = new Option<string?>("--state", "Two-letter state code (e.g. OH, TX). Adds it as positional state arg");
-        stateOpt.AddValidator(r =>
-        {
-            if (r.Tokens.Count == 0) return;
-            var v = r.Tokens[0].Value.ToUpperInvariant();
-            if (v.Length != 2 || !ValidStates.Contains(v))
-                r.ErrorMessage = "State must be a valid two letter code.";
-        });
-        return stateOpt;
+        // Format-only check (two letters). The previous 50-entry US-state
+        // allowlist silently rejected DC, PR, GU, VI, and any future
+        // Synthea-supported geo codes. Defer the "is this a real place?"
+        // check to Synthea itself, which owns the geo data.
+        var opt = new Option<string?>("--state",
+            "Two-letter state/territory code (e.g. OH, TX, DC, PR). Format-only check; Synthea rejects unknown codes itself.");
+        opt.AddValidator(SingleTokenValidator(v =>
+            v.Length == 2 && v.All(char.IsLetter) ? null : "State code must be exactly two letters."));
+        return opt;
     }
 
     private static Option<string?> CreateCityOption()
     {
-        var cityOpt = new Option<string?>("--city", "City name (optional second positional arg after state)");
-        cityOpt.AddValidator(r =>
-        {
-            if (r.Tokens.Count == 0) return;
-            if (string.IsNullOrWhiteSpace(r.Tokens[0].Value))
-                r.ErrorMessage = "City name cannot be empty.";
-        });
-        return cityOpt;
+        var opt = new Option<string?>("--city", "City name (optional second positional arg after state)");
+        opt.AddValidator(SingleTokenValidator(v =>
+            string.IsNullOrWhiteSpace(v) ? "City name cannot be empty." : null));
+        return opt;
     }
 
     private static Option<string?> CreateGenderOption()
     {
-        var genderOpt = new Option<string?>("--gender", "Patient gender filter (M or F)");
-        genderOpt.AddValidator(r =>
+        var opt = new Option<string?>("--gender", "Patient gender filter (M or F)");
+        opt.AddValidator(SingleTokenValidator(v =>
         {
-            if (r.Tokens.Count == 0) return;
-            var g = r.Tokens[0].Value.ToUpperInvariant();
-            if (g != "M" && g != "F")
-                r.ErrorMessage = "Gender must be 'M' or 'F'.";
-        });
-        return genderOpt;
+            var g = v.ToUpperInvariant();
+            return g == "M" || g == "F" ? null : "Gender must be 'M' or 'F'.";
+        }));
+        return opt;
     }
 
     private static Option<string?> CreateAgeRangeOption()
     {
-        var ageOpt = new Option<string?>("--age-range", "Age range filter as min-max");
-        ageOpt.AddValidator(r =>
+        var opt = new Option<string?>("--age-range", "Age range filter as min-max");
+        opt.AddValidator(SingleTokenValidator(v =>
         {
-            if (r.Tokens.Count == 0) return;
-            var parts = r.Tokens[0].Value.Split('-', 2);
-            if (parts.Length != 2 ||
-                !int.TryParse(parts[0], out var min) ||
-                !int.TryParse(parts[1], out var max) ||
-                min < 0 || max < min)
-            {
-                r.ErrorMessage = "Age range must be 'min-max' with min <= max.";
-            }
-        });
-        return ageOpt;
+            var parts = v.Split('-', 2);
+            return parts.Length == 2
+                   && int.TryParse(parts[0], out var min)
+                   && int.TryParse(parts[1], out var max)
+                   && min >= 0 && max >= min
+                ? null
+                : "Age range must be 'min-max' with min <= max.";
+        }));
+        return opt;
     }
 
     private static Option<DirectoryInfo?> CreateModuleDirOption()
     {
-        var moduleDirOpt = new Option<DirectoryInfo?>("--module-dir", "Directory of custom modules");
-        moduleDirOpt.AddValidator(r =>
-        {
-            if (r.Tokens.Count == 0) return;
-            if (!Directory.Exists(r.Tokens[0].Value))
-                r.ErrorMessage = "Module directory does not exist.";
-        });
-        return moduleDirOpt;
+        var opt = new Option<DirectoryInfo?>("--module-dir", "Directory of custom modules");
+        opt.AddValidator(SingleTokenValidator(v =>
+            Directory.Exists(v) ? null : "Module directory does not exist."));
+        return opt;
     }
 
     private static Option<string[]> CreateModuleOption()
     {
-        var moduleOpt = new Option<string[]>("--module", "Specific disease modules")
-        {
-            Arity = ArgumentArity.ZeroOrMore
-        };
-        moduleOpt.AddValidator(r =>
-        {
-            foreach (var t in r.Tokens)
-            {
-                if (string.IsNullOrWhiteSpace(t.Value))
-                {
-                    r.ErrorMessage = "Module name cannot be empty.";
-                    return;
-                }
-            }
-        });
-        return moduleOpt;
+        var opt = new Option<string[]>("--module", "Specific disease modules") { Arity = ArgumentArity.ZeroOrMore };
+        opt.AddValidator(MultiTokenValidator(v =>
+            string.IsNullOrWhiteSpace(v) ? "Module name cannot be empty." : null));
+        return opt;
     }
 
     private static Option<int?> CreatePopulationOption()
     {
-        var popOpt = new Option<int?>(aliases: new[] { "--population", "-p" }, description: "Number of patients to generate");
-        popOpt.AddValidator(r =>
-        {
-            if (r.Tokens.Count == 0) return;
-            if (!int.TryParse(r.Tokens[0].Value, out var v) || v <= 0)
-                r.ErrorMessage = "Population must be a positive integer.";
-        });
-        return popOpt;
+        var opt = new Option<int?>(aliases: new[] { "--population", "-p" }, description: "Number of patients to generate");
+        opt.AddValidator(SingleTokenValidator(v =>
+            int.TryParse(v, out var n) && n > 0 ? null : "Population must be a positive integer."));
+        return opt;
     }
 
     private static Option<int?> CreateSeedOption()
     {
-        var seedOpt = new Option<int?>(aliases: new[] { "--seed", "-s" }, description: "Random seed for deterministic output");
-        seedOpt.AddValidator(r =>
-        {
-            if (r.Tokens.Count == 0) return;
-            if (!int.TryParse(r.Tokens[0].Value, out _))
-                r.ErrorMessage = "Random seed must be an integer.";
-        });
-        return seedOpt;
+        var opt = new Option<int?>(aliases: new[] { "--seed", "-s" }, description: "Random seed for deterministic output");
+        opt.AddValidator(SingleTokenValidator(v =>
+            int.TryParse(v, out _) ? null : "Random seed must be an integer."));
+        return opt;
     }
 
     private static Option<FileInfo?> CreateConfigOption()
     {
-        var configOpt = new Option<FileInfo?>(aliases: new[] { "--config", "-c" }, description: "Path to Synthea configuration file");
-        configOpt.AddValidator(r =>
-        {
-            if (r.Tokens.Count == 0) return;
-            if (!File.Exists(r.Tokens[0].Value))
-                r.ErrorMessage = "Configuration file does not exist.";
-        });
-        return configOpt;
+        var opt = new Option<FileInfo?>(aliases: new[] { "--config", "-c" }, description: "Path to Synthea configuration file");
+        opt.AddValidator(SingleTokenValidator(v =>
+            File.Exists(v) ? null : "Configuration file does not exist."));
+        return opt;
     }
 
     private static Option<string?> CreateZipOption()
     {
-        var zipOpt = new Option<string?>("--zip", "ZIP code (requires --state)");
-        zipOpt.AddValidator(r =>
-        {
-            if (r.Tokens.Count == 0) return;
-            if (!Regex.IsMatch(r.Tokens[0].Value, @"^\d{5}(?:-\d{4})?$"))
-                r.ErrorMessage = "ZIP code must be 5 digits or 5+4.";
-        });
-        return zipOpt;
+        var opt = new Option<string?>("--zip", "ZIP code (requires --state)");
+        opt.AddValidator(SingleTokenValidator(v =>
+            Regex.IsMatch(v, @"^\d{5}(?:-\d{4})?$") ? null : "ZIP code must be 5 digits or 5+4."));
+        return opt;
     }
 
     private static Option<string?> CreateFhirVersionOption()
     {
-        var fhirVerOpt = new Option<string?>("--fhir-version", "FHIR version (R4 or STU3)");
-        fhirVerOpt.AddValidator(r =>
+        var opt = new Option<string?>("--fhir-version", "FHIR version (R4 or STU3)");
+        opt.AddValidator(SingleTokenValidator(v =>
         {
-            if (r.Tokens.Count == 0) return;
-            var v = r.Tokens[0].Value.ToUpperInvariant();
-            if (v != "R4" && v != "STU3")
-                r.ErrorMessage = "FHIR version must be R4 or STU3.";
-        });
-        return fhirVerOpt;
+            var u = v.ToUpperInvariant();
+            return u == "R4" || u == "STU3" ? null : "FHIR version must be R4 or STU3.";
+        }));
+        return opt;
     }
 
     private static Option<FileInfo?> CreateInitialSnapshotOption()
     {
         var opt = new Option<FileInfo?>("--initial-snapshot", "Path to initial snapshot to load (-i)");
-        opt.AddValidator(r =>
-        {
-            if (r.Tokens.Count == 0) return;
-            if (!File.Exists(r.Tokens[0].Value))
-                r.ErrorMessage = "Initial snapshot file does not exist.";
-        });
+        opt.AddValidator(SingleTokenValidator(v =>
+            File.Exists(v) ? null : "Initial snapshot file does not exist."));
         return opt;
     }
 
     private static Option<FileInfo?> CreateUpdatedSnapshotOption()
     {
         var opt = new Option<FileInfo?>("--updated-snapshot", "Path where updated snapshot will be written (-u)");
-        opt.AddValidator(r =>
+        opt.AddValidator(SingleTokenValidator(v =>
         {
-            if (r.Tokens.Count == 0) return;
-            var dir = Path.GetDirectoryName(r.Tokens[0].Value);
-            if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
-                r.ErrorMessage = "Directory for updated snapshot must exist.";
-        });
+            var dir = Path.GetDirectoryName(v);
+            return !string.IsNullOrWhiteSpace(dir) && Directory.Exists(dir)
+                ? null
+                : "Directory for updated snapshot must exist.";
+        }));
         return opt;
     }
 
     private static Option<int?> CreateDaysForwardOption()
     {
         var opt = new Option<int?>("--days-forward", "Advance time from snapshot by N days (-t)");
-        opt.AddValidator(r =>
-        {
-            if (r.Tokens.Count == 0) return;
-            if (!int.TryParse(r.Tokens[0].Value, out var v) || v <= 0)
-                r.ErrorMessage = "Days forward must be a positive integer.";
-        });
+        opt.AddValidator(SingleTokenValidator(v =>
+            int.TryParse(v, out var n) && n > 0 ? null : "Days forward must be a positive integer."));
         return opt;
     }
 
     private static Option<string[]> CreateFormatOption()
     {
-        var formatOpt = new Option<string[]>("--format", "Output formats to generate (FHIR, CSV, CCDA, BULKFHIR, CPCDS)")
-        {
-            Arity = ArgumentArity.ZeroOrMore
-        };
-        formatOpt.AddValidator(r =>
-        {
-            var allowed = new[] { "fhir", "csv", "ccda", "bulkfhir", "bulk-fhir", "cpcds" };
-            foreach (var t in r.Tokens)
-            {
-                var norm = t.Value.ToLowerInvariant();
-                if (!allowed.Contains(norm))
-                {
-                    r.ErrorMessage = $"Unsupported format '{t.Value}'.";
-                    return;
-                }
-            }
-        });
-        return formatOpt;
+        var opt = new Option<string[]>("--format",
+            "Output formats to generate (FHIR, CSV, CCDA, BULKFHIR, CPCDS)")
+        { Arity = ArgumentArity.ZeroOrMore };
+        opt.AddValidator(MultiTokenValidator(v =>
+            AllowedFormats.Contains(v) ? null : $"Unsupported format '{v}'."));
+        return opt;
     }
 
-    private static Argument<string[]> CreatePassthruArgument()
+    private static Argument<string[]> CreatePassthruArgument() => new("args")
     {
-        return new Argument<string[]>("args")
-        {
-            Arity = ArgumentArity.ZeroOrMore,
-            Description = "Any other arguments forwarded unchanged to synthea.jar"
-        };
-    }
+        Arity = ArgumentArity.ZeroOrMore,
+        Description = "Any other arguments forwarded unchanged to synthea.jar"
+    };
 }

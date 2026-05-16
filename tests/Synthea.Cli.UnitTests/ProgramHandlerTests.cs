@@ -233,12 +233,25 @@ public class ProgramHandlerTests : IDisposable
         Assert.Null(_runner.StartInfo);
     }
 
-    [Fact]
-    public async Task InvalidStateReturnsError()
+    [Theory]
+    [InlineData("X")]      // too short
+    [InlineData("XYZ")]    // too long
+    [InlineData("X1")]     // not all letters
+    public async Task InvalidStateFormatReturnsError(string badState)
     {
-        var outDir = Path.Combine(_tempDir, "out16");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--state", "XX" });
+        var outDir = Path.Combine(_tempDir, Path.GetRandomFileName());
+        var code = await Program.Main(new[] { "run", "--output", outDir, "--state", badState });
         Assert.NotEqual(0, code);
+    }
+
+    [Theory]
+    [InlineData("DC")]     // District of Columbia — rejected by the old US-only allowlist
+    [InlineData("PR")]     // Puerto Rico — same
+    public async Task TerritoryStateCodesAreAccepted(string state)
+    {
+        var outDir = Path.Combine(_tempDir, Path.GetRandomFileName());
+        var code = await Program.Main(new[] { "run", "--output", outDir, "--state", state });
+        Assert.Equal(0, code);
     }
 
     [Fact]
