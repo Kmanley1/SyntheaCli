@@ -40,10 +40,7 @@ public class ProgramRefactorTests
     [Fact]
     public void BuildArgumentList_BuildsExpectedFlags()
     {
-        var opts = new RunOptions(
-            Output: new DirectoryInfo("/tmp"),
-            Refresh: false,
-            JavaPath: "java",
+        var args = new SyntheaArgs(
             State: "OH",
             City: "Cleveland",
             Gender: "M",
@@ -61,7 +58,7 @@ public class ProgramRefactorTests
             Formats: new[] { "fhir" },
             Passthru: new[] { "--extra" });
 
-        var list = RunCommand.BuildArgumentList(opts);
+        var list = RunCommand.BuildArgumentList(args);
         Assert.Contains("-p", list);
         Assert.Contains("5", list);
         Assert.Contains("-s", list);
@@ -88,10 +85,11 @@ public class ProgramRefactorTests
     public void CreateProcessStartInfo_UsesWorkingDirectoryAndJar()
     {
         var tmpDir = Path.Combine(Path.GetTempPath(), "synthea-test-tmp");
-        var opts = new RunOptions(
+        var hosting = new HostingOptions(
             Output: new DirectoryInfo(tmpDir),
             Refresh: false,
-            JavaPath: "customjava",
+            JavaPath: "customjava");
+        var args = new SyntheaArgs(
             State: null,
             City: null,
             Gender: null,
@@ -110,7 +108,7 @@ public class ProgramRefactorTests
             Passthru: System.Array.Empty<string>());
 
         var jar = new FileInfo(Path.Combine(tmpDir, "synthea.jar"));
-        var psi = RunCommand.CreateProcessStartInfo(opts, jar);
+        var psi = RunCommand.CreateProcessStartInfo(hosting, args, jar);
         Assert.Equal("customjava", psi.FileName);
         Assert.Equal(tmpDir, psi.WorkingDirectory);
         Assert.Contains("-jar", psi.ArgumentList);
