@@ -1,4 +1,4 @@
-using System.Reflection;
+using System;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -6,26 +6,17 @@ namespace Synthea.Cli.UnitTests;
 
 public class CliTests
 {
-    private static Task<int> InvokeMain(params string[] args)
-    {
-        var program = System.Reflection.Assembly.Load("Synthea.Cli").GetType("Synthea.Cli.Program")
-            ?? throw new System.InvalidOperationException();
-        var method = program.GetMethod("Main", BindingFlags.Static | BindingFlags.Public)!;
-        return (Task<int>)method.Invoke(null, new object[] { args })!;
-    }
-
     [Fact]
     public async Task DefaultsToHelpWhenNoArgs()
     {
-        var exit = await InvokeMain(System.Array.Empty<string>());
+        var exit = await Program.Main(Array.Empty<string>());
         Assert.Equal(0, exit);
     }
 
     [Fact]
     public async Task RunCommandAllowsUnknownOptions()
     {
-        var exit = await InvokeMain("run", "--help", "--unknown", "value");
+        var exit = await Program.Main(new[] { "run", "--help", "--unknown", "value" });
         Assert.Equal(0, exit);
     }
 }
-

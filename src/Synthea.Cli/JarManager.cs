@@ -66,15 +66,24 @@ internal static class JarManager
             $"https://api.github.com/repos/{Repo}/releases/latest", token);
 
         using var doc = JsonDocument.Parse(releaseJson);
-        var assets = doc.RootElement.GetProperty("assets");
+        if (!doc.RootElement.TryGetProperty("assets", out var assets) ||
+            assets.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidOperationException(
+                "Unexpected GitHub release response shape: missing 'assets' array. " +
+                "GitHub may have changed its API, or the latest release is malformed.");
+        }
 
         string? jarUrl = null;
         string? shaUrl = null;
 
         foreach (var a in assets.EnumerateArray())
         {
-            var name = a.GetProperty("name").GetString();
-            var url = a.GetProperty("browser_download_url").GetString();
+            if (!a.TryGetProperty("name", out var nameEl) ||
+                !a.TryGetProperty("browser_download_url", out var urlEl))
+                continue;
+            var name = nameEl.GetString();
+            var url = urlEl.GetString();
             if (name is null || url is null) continue;
 
             if (name.Contains(JarHint, StringComparison.OrdinalIgnoreCase))
@@ -88,8 +97,10 @@ internal static class JarManager
 
         var jarFile = Path.Combine(cacheDir, Path.GetFileName(jarUrl));
 
-        // --- Download with progress to a temp file first ---
-        var tmpFile = Path.GetTempFileName();
+        // Download with progress to a temp file first. GetRandomFileName() is
+        // preferred over GetTempFileName() — the latter has a 65,535-name
+        // ceiling and creates a 0-byte file as a side effect.
+        var tmpFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         try
         {
             await DownloadAsync(jarUrl, tmpFile, prog, token);
@@ -109,10 +120,13 @@ internal static class JarManager
         }
         finally
         {
-            // Clean up the temp file if anything went wrong
-            try { File.Delete(tmpFile); } catch { }
+            // Cleanup is best-effort: the temp file may already be gone (the
+            // Move above succeeded) or locked by AV. Narrow catch so anything
+            // unexpected (OOM, etc.) still propagates.
+            try { File.Delete(tmpFile); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
         }
-
 
         return new FileInfo(jarFile);
     }

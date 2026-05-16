@@ -7,9 +7,6 @@ using Xunit;
 
 namespace Synthea.Cli.IntegrationTests;
 
-[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-public sealed class SkippableFactAttribute : FactAttribute { }
-
 [Trait("Category", "Integration")]
 public class SyntheaCliWrapperRunTests : IDisposable
 {
