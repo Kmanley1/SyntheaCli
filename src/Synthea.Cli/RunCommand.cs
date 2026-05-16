@@ -50,6 +50,15 @@ internal static class RunCommand
             Description = "Print the java command line that would be run, then exit without running it. " +
                           "Useful for debugging or scripting. Does not download the JAR."
         };
+        var jarOpt = new Option<string?>("--jar")
+        {
+            Description = "Path to a Synthea JAR to use directly. Skips the GitHub download. " +
+                          "Falls back to SYNTHEA_CLI_JAR_PATH env var, then ~/.synthea-cli/config.json."
+        };
+        var insistChecksumOpt = new Option<bool>("--insist-checksum")
+        {
+            Description = "Fail the run if the upstream release does not publish a .sha256 asset."
+        };
         var passthru = CreatePassthruArgument();
 
         runCmd.Options.Add(outputOpt);
@@ -70,6 +79,8 @@ internal static class RunCommand
         runCmd.Options.Add(formatOpt);
         runCmd.Options.Add(addFormatOpt);
         runCmd.Options.Add(printArgsOpt);
+        runCmd.Options.Add(jarOpt);
+        runCmd.Options.Add(insistChecksumOpt);
         runCmd.Arguments.Add(passthru);
 
         runCmd.TreatUnmatchedTokensAsErrors = false;
@@ -78,8 +89,10 @@ internal static class RunCommand
         {
             var (hosting, args) = ParseRunOptions(parseResult, refreshOpt, javaOpt, outputOpt, stateOpt, cityOpt,
                 genderOpt, ageOpt, moduleDirOpt, moduleOpt, popOpt, seedOpt, configOpt, zipOpt,
-                fhirVerOpt, initialSnapOpt, updatedSnapOpt, daysForwardOpt, formatOpt, addFormatOpt, passthru);
+                fhirVerOpt, initialSnapOpt, updatedSnapOpt, daysForwardOpt, formatOpt, addFormatOpt,
+                jarOpt, insistChecksumOpt, passthru);
             var printArgs = parseResult.GetValue(printArgsOpt);
+            var jarOverrides = ResolveJarOverrides(hosting);
 
             if (!string.IsNullOrWhiteSpace(args.City) && string.IsNullOrWhiteSpace(args.State))
             {
@@ -109,7 +122,7 @@ internal static class RunCommand
                         Console.Write($"\rDownloading Synthea {p.dl / 1_000_000}/{p.total / 1_000_000} MB…");
                 });
 
-                var jar = await jarSource.EnsureJarAsync(hosting.Refresh, progress, cancelToken);
+                var jar = await jarSource.EnsureJarAsync(hosting.Refresh, progress, cancelToken, jarOverrides);
 
                 if (interactive) Console.WriteLine();
                 Console.WriteLine($"✓ Using {jar.Name}  ({jar.FullName})");
@@ -321,13 +334,17 @@ internal static class RunCommand
         Option<int?> daysOpt,
         Option<string[]> formatOpt,
         Option<string[]> addFormatOpt,
+        Option<string?> jarOpt,
+        Option<bool> insistChecksumOpt,
         Argument<string[]> passthru)
     {
         var javaPathArg = parseResult.GetValue(javaOpt);
         var hosting = new HostingOptions(
             Output: parseResult.GetValue(outputOpt)!,
             Refresh: parseResult.GetValue(refreshOpt),
-            JavaPath: string.IsNullOrWhiteSpace(javaPathArg) ? "java" : javaPathArg!);
+            JavaPath: string.IsNullOrWhiteSpace(javaPathArg) ? "java" : javaPathArg!,
+            JarPath: parseResult.GetValue(jarOpt),
+            InsistChecksum: parseResult.GetValue(insistChecksumOpt));
         var args = new SyntheaArgs(
             State: parseResult.GetValue(stateOpt),
             City: parseResult.GetValue(cityOpt),
@@ -347,6 +364,24 @@ internal static class RunCommand
             AdditionalFormats: parseResult.GetValue(addFormatOpt) ?? Array.Empty<string>(),
             Passthru: parseResult.GetValue(passthru) ?? Array.Empty<string>());
         return (hosting, args);
+    }
+
+    // ----- Configuration resolution ---------------------------------------
+    //
+    // Apply the four-source precedence rule for the JarManager inputs:
+    //   CLI flag > env var > ~/.synthea-cli/config.json > built-in default
+    // CLI values arrive on HostingOptions; env vars and config file are
+    // resolved here so JarManager doesn't have to know about either. (A-40)
+
+    internal static JarOverrides ResolveJarOverrides(HostingOptions hosting)
+        => ResolveJarOverrides(hosting, CliConfig.Load());
+
+    internal static JarOverrides ResolveJarOverrides(HostingOptions hosting, CliConfig config)
+    {
+        var jarPath = CliConfig.Resolve(hosting.JarPath, "SYNTHEA_CLI_JAR_PATH", config.JarPath);
+        var token = CliConfig.Resolve(null, "GITHUB_TOKEN", config.GitHubToken);
+        var insist = CliConfig.ResolveBool(hosting.InsistChecksum, "SYNTHEA_CLI_INSIST_CHECKSUM", config.InsistChecksum);
+        return new JarOverrides(jarPath, token, insist);
     }
 
     // ----- Option-validator helpers ---------------------------------------

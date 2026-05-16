@@ -1,6 +1,9 @@
 using System;
 using System.CommandLine;
 using System.IO;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -38,8 +41,28 @@ internal static class Program
             }));
         sc.AddSingleton<IProcessRunner, DefaultProcessRunner>();
         sc.AddSingleton<IJarSource>(sp => new JarManager(
+            http: BuildHttpClient(CliConfig.Load()),
             logger: sp.GetRequiredService<ILogger<JarManager>>()));
         return sc.BuildServiceProvider();
+    }
+
+    internal static HttpClient BuildHttpClient(CliConfig config)
+    {
+        // Proxy is wired at construction time: HttpClient does not expose its
+        // handler for runtime mutation, so per-call proxy overrides aren't
+        // possible without rebuilding the client. CLI/env/config still apply
+        // in the usual precedence order. (A-5)
+        var proxyUrl = CliConfig.Resolve(null, "HTTPS_PROXY", config.HttpsProxy)
+                    ?? CliConfig.Resolve(null, "HTTP_PROXY", null);
+        var handler = new HttpClientHandler();
+        if (!string.IsNullOrEmpty(proxyUrl))
+        {
+            handler.Proxy = new WebProxy(proxyUrl);
+            handler.UseProxy = true;
+        }
+        var client = new HttpClient(handler);
+        client.DefaultRequestHeaders.UserAgent.Add(ProductInfoHeaderValue.Parse("Synthea.Cli/0.1"));
+        return client;
     }
 
     internal static async Task<int> RunAsync(string[] args, IServiceProvider services)

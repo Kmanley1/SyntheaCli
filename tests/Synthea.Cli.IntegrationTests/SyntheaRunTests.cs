@@ -73,7 +73,8 @@ public class SyntheaRunTests : IDisposable
         public Task<FileInfo> EnsureJarAsync(
             bool forceRefresh = false,
             IProgress<(long downloaded, long total)>? prog = null,
-            CancellationToken token = default)
+            CancellationToken token = default,
+            JarOverrides? overrides = null)
             => Task.FromResult(_jar);
     }
 }

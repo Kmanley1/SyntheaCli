@@ -78,9 +78,41 @@ synthea --verbose run -o ./output --population 5 --state OH
 
 # Suppress info logs; only warnings and errors print
 synthea --quiet run -o ./output --population 5 --state OH
+
+# Use a pre-downloaded JAR (air-gapped/CI) — skips the GitHub call entirely
+synthea run -o ./output --population 5 --state OH --jar /opt/synthea-with-dependencies.jar
+
+# Fail fast if the upstream release ships no .sha256 (recommended in CI)
+synthea run -o ./output --population 5 --state OH --insist-checksum
 ```
 
 > **Short alias:** `syn` works everywhere `synthea` does.
+
+### Configuration
+
+Four sources can supply the JAR-management settings, in this precedence
+order — earlier wins:
+
+1. **CLI flag** — `--jar <path>`, `--insist-checksum`.
+2. **Environment variable** — `SYNTHEA_CLI_JAR_PATH`, `GITHUB_TOKEN`,
+   `HTTPS_PROXY` / `HTTP_PROXY`, `SYNTHEA_CLI_INSIST_CHECKSUM`.
+3. **Config file** — `~/.synthea-cli/config.json`:
+
+   ```json
+   {
+     "jarPath": "/opt/synthea-with-dependencies.jar",
+     "insistChecksum": true,
+     "githubToken": "ghp_xxxxxxxxxxxxxxxxxxxx",
+     "httpsProxy": "http://corp-proxy:8080"
+   }
+   ```
+4. **Built-in default** — download the latest release JAR from GitHub.
+
+`GITHUB_TOKEN` (when set) is attached as `Authorization: Bearer <token>`
+on GitHub API calls so anonymous runs don't hit the 60 req/hour rate limit.
+`HTTPS_PROXY` is wired into the HTTP client at startup. `--insist-checksum`
+fails the run if the upstream release does not publish a `.sha256` asset
+(default off for backward compatibility — recommended on in production CI).
 
 ### Exit codes
 
