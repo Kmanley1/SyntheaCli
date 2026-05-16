@@ -19,4 +19,5 @@ internal record SyntheaArgs(
     FileInfo? UpdatedSnapshot,
     int? DaysForward,
     string[] Formats,
+    string[] AdditionalFormats,
     string[] Passthru);

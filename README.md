@@ -35,6 +35,7 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
 | **Zero-install JAR** | Automatically fetches the newest `synthea-with-dependencies.jar` from GitHub releases and verifies its SHA-256 checksum when the upstream publishes one. |
 | **Configurable cache** | Stores the JAR under `%LOCALAPPDATA%\Synthea.Cli` on Windows and `~/.local/share/Synthea.Cli` on Linux/macOS; refresh anytime with `--refresh`. |
 | **Friendly flags** | `--state OH`, `--city "Columbus"`, `--output ./data`, `--seed 42`, `--initial-snapshot snap.json`, `--format FHIR` map directly to Synthea flags. |
+| **Additive formats** | `--format` is exclusive (enables only the named formats, disables the rest). Use `--add-format` (repeatable) to enable a format additively without overriding Synthea defaults. |
 | **Portable** | Runs on Windows, macOS, Linux—wherever .NET 8 + Java 11+ are available. |
 | **Unit-tested** | Complete test coverage via xUnit and Coverlet; network & process calls are fully mocked. |
 
@@ -64,6 +65,9 @@ synthea --refresh run -o ./output --population 10 --state TX --city Austin
 
 # Advance 30 days from an initial snapshot and limit to CSV output only
 synthea run -o ./output --initial-snapshot snap.json --days-forward 30 --format CSV
+
+# Keep Synthea's default exporters AND also turn on CCDA (additive)
+synthea run -o ./output --population 10 --state OH --add-format CCDA
 
 # Print the java invocation that would be run, without running it
 synthea run -o ./output --population 5 --state OH --print-args
