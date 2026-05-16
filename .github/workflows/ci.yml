@@ -17,9 +17,18 @@ jobs:
           dotnet-version: '8.0.x'
       - name: Restore dependencies
         run: dotnet restore
+      - name: Verify formatting
+        run: dotnet format --no-restore --verify-no-changes --severity warn
       - name: Build
         run: dotnet build --no-restore --warnaserror
       - name: Run Unit Tests
-        run: dotnet test --no-build --filter Category!=Integration
+        run: dotnet test --no-build --filter Category!=Integration --collect:"XPlat Code Coverage" --results-directory TestResults
       - name: Run Integration Tests
         run: dotnet test --no-build --filter Category=Integration
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-cobertura
+          path: TestResults/**/coverage.cobertura.xml
+          if-no-files-found: warn

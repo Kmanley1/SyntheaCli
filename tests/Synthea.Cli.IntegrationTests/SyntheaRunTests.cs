@@ -55,7 +55,7 @@ public class SyntheaRunTests : IDisposable
             public StreamReader StandardError { get; } = new StreamReader(new MemoryStream());
             public Task WaitForExitAsync() => Task.CompletedTask;
             public int ExitCode => 0;
-            public void Dispose() {}
+            public void Dispose() { }
         }
     }
 }

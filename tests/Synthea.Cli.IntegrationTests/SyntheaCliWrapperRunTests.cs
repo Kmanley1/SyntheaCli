@@ -34,7 +34,7 @@ public class SyntheaCliWrapperRunTests : IDisposable
             psi.RedirectStandardOutput = true;
             psi.RedirectStandardError = true;
             psi.UseShellExecute = false;
-            
+
             using var proc = Process.Start(psi);
             proc?.WaitForExit();
             return proc?.ExitCode == 0;
@@ -130,14 +130,14 @@ public class SyntheaCliWrapperRunTests : IDisposable
 
         var fhirDir = Path.Combine(_workDir, testOutputDir, FhirSubDir, FhirTypeDir);
         EnsureFhirDirExists(fhirDir, stdOut, stdErr);
-        
+
         // Get all JSON files and filter out known non-patient files
         var allFiles = Directory.GetFiles(fhirDir, "*.json", SearchOption.TopDirectoryOnly);
         var patientFiles = allFiles
-            .Where(f => !Path.GetFileName(f).Contains(HospitalInfo) && 
+            .Where(f => !Path.GetFileName(f).Contains(HospitalInfo) &&
                        !Path.GetFileName(f).Contains(PractitionerInfo))
             .ToArray();
-            
+
         // Synthea's -p N means "N living patients at simulation end"; the FHIR
         // exporter also writes deceased patients generated along the way, so
         // the actual file count is >= N (not == N). Don't fail on that here.
