@@ -8,7 +8,11 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
       - name: Setup .NET
@@ -29,6 +33,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: coverage-cobertura
+          name: coverage-cobertura-${{ matrix.os }}
           path: TestResults/**/coverage.cobertura.xml
           if-no-files-found: warn
