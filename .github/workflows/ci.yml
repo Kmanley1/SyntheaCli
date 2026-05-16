@@ -25,8 +25,19 @@ jobs:
         run: dotnet format --no-restore --verify-no-changes --severity warn
       - name: Build
         run: dotnet build --no-restore --warnaserror
-      - name: Run Unit Tests
-        run: dotnet test --no-build --filter Category!=Integration --collect:"XPlat Code Coverage" --results-directory TestResults
+      - name: Run Unit Tests (with coverage gate)
+        # NOTE: commas in MSBuild property values must be escaped as %2C
+        # so the shell doesn't split "80,75" into two arguments. Both
+        # bash (Linux) and pwsh (Windows) strip embedded quotes here.
+        run: >-
+          dotnet test tests/Synthea.Cli.UnitTests/Synthea.Cli.UnitTests.csproj
+          --no-build --filter "Category!=Integration"
+          -p:CollectCoverage=true
+          -p:CoverletOutputFormat=cobertura
+          -p:CoverletOutput=${{ github.workspace }}/TestResults/coverage.cobertura.xml
+          -p:Threshold=80%2C75
+          -p:ThresholdType=line%2Cbranch
+          -p:ThresholdStat=total
       - name: Run Integration Tests
         run: dotnet test --no-build --filter Category=Integration
       - name: Upload coverage report
@@ -34,5 +45,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: coverage-cobertura-${{ matrix.os }}
-          path: TestResults/**/coverage.cobertura.xml
+          path: TestResults/coverage.cobertura.xml
           if-no-files-found: warn
