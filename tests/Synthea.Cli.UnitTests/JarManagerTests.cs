@@ -17,8 +17,6 @@ public class JarManagerTests : IDisposable
     {
         _tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(_tempDir);
-        JarManager.CacheRootOverride = _tempDir;
-        Environment.SetEnvironmentVariable("TMPDIR", _tempDir);
     }
 
     public void Dispose()
@@ -38,9 +36,9 @@ public class JarManagerTests : IDisposable
         Directory.CreateDirectory(cache);
         var existing = Path.Combine(cache, "cached-with-dependencies.jar");
         await File.WriteAllTextAsync(existing, "dummy");
-        JarManager.Http = CreateClient(new(), new());
 
-        var fi = await JarManager.EnsureJarAsync();
+        var jm = new JarManager(CreateClient(new(), new()), _tempDir);
+        var fi = await jm.EnsureJarAsync();
         Assert.Equal(existing, fi.FullName);
     }
 
@@ -51,9 +49,9 @@ public class JarManagerTests : IDisposable
         var jarBytes = new byte[] { 1, 2, 3 };
         var texts = new Dictionary<string, string> { { "https://api.github.com/repos/synthetichealth/synthea/releases/latest", releaseJson } };
         var bins = new Dictionary<string, byte[]> { { "http://host/jar", jarBytes } };
-        JarManager.Http = CreateClient(texts, bins);
 
-        var fi = await JarManager.EnsureJarAsync();
+        var jm = new JarManager(CreateClient(texts, bins), _tempDir);
+        var fi = await jm.EnsureJarAsync();
         Assert.True(File.Exists(fi.FullName));
         Assert.Equal(jarBytes, File.ReadAllBytes(fi.FullName));
     }
@@ -69,9 +67,9 @@ public class JarManagerTests : IDisposable
             {"http://host/jar.sha", "deadbeef"}
         };
         var bins = new Dictionary<string, byte[]> { { "http://host/jar", jarBytes } };
-        JarManager.Http = CreateClient(texts, bins);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => JarManager.EnsureJarAsync());
+        var jm = new JarManager(CreateClient(texts, bins), _tempDir);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => jm.EnsureJarAsync());
     }
 
     private class StubHandler : HttpMessageHandler

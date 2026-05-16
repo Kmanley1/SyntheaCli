@@ -1,7 +1,9 @@
 using System;
 using System.IO;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using Synthea.Cli;
 using Xunit;
 
@@ -12,6 +14,7 @@ public class ProgramHandlerTests : IDisposable
     private readonly string _tempDir;
     private readonly FileInfo _jar;
     private readonly CapturingRunner _runner = new();
+    private readonly ServiceProvider _services;
 
     public ProgramHandlerTests()
     {
@@ -19,22 +22,26 @@ public class ProgramHandlerTests : IDisposable
         Directory.CreateDirectory(_tempDir);
         _jar = new FileInfo(Path.Combine(_tempDir, "synthea.jar"));
         File.WriteAllText(_jar.FullName, "jar");
-        Program.Runner = _runner;
-        Program.EnsureJarAsyncFunc = (_, _, _) => Task.FromResult(_jar);
+
+        var sc = new ServiceCollection();
+        sc.AddSingleton<IProcessRunner>(_runner);
+        sc.AddSingleton<IJarSource>(new StubJarSource(_jar));
+        _services = sc.BuildServiceProvider();
     }
 
     public void Dispose()
     {
+        _services.Dispose();
         try { Directory.Delete(_tempDir, true); } catch { }
-        Program.Runner = new DefaultProcessRunner();
-        Program.EnsureJarAsyncFunc = JarManager.EnsureJarAsync;
     }
+
+    private Task<int> Run(params string[] args) => Program.RunAsync(args, _services);
 
     [Fact]
     public async Task BuildsProcessStartInfoWithStateAndCity()
     {
         var outDir = Path.Combine(_tempDir, "out1");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--state", "OH", "--city", "Cleveland" });
+        var code = await Run("run", "--output", outDir, "--state", "OH", "--city", "Cleveland");
         Assert.Equal(0, code);
 
         var psi = _runner.StartInfo!;
@@ -48,7 +55,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task UsesCustomJavaPath()
     {
         var outDir = Path.Combine(_tempDir, "out2");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--java-path", "/usr/bin/custom" });
+        var code = await Run("run", "--output", outDir, "--java-path", "/usr/bin/custom");
         Assert.Equal(0, code);
         Assert.Equal("/usr/bin/custom", _runner.StartInfo!.FileName);
     }
@@ -57,7 +64,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task ForwardsPopulationOption()
     {
         var outDir = Path.Combine(_tempDir, "out3");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "-p", "42" });
+        var code = await Run("run", "--output", outDir, "-p", "42");
         Assert.Equal(0, code);
         Assert.Equal(new[] { "-jar", _jar.FullName, "-p", "42" }, _runner.StartInfo!.ArgumentList);
     }
@@ -66,7 +73,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task InvalidPopulationReturnsError()
     {
         var outDir = Path.Combine(_tempDir, "out4");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "-p", "0" });
+        var code = await Run("run", "--output", outDir, "-p", "0");
         Assert.NotEqual(0, code);
     }
 
@@ -74,7 +81,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task ForwardsSeedOption()
     {
         var outDir = Path.Combine(_tempDir, "out5");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "-s", "123" });
+        var code = await Run("run", "--output", outDir, "-s", "123");
         Assert.Equal(0, code);
         Assert.Equal(new[] { "-jar", _jar.FullName, "-s", "123" }, _runner.StartInfo!.ArgumentList);
     }
@@ -83,7 +90,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task InvalidSeedReturnsError()
     {
         var outDir = Path.Combine(_tempDir, "out6");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "-s", "oops" });
+        var code = await Run("run", "--output", outDir, "-s", "oops");
         Assert.NotEqual(0, code);
     }
 
@@ -91,12 +98,12 @@ public class ProgramHandlerTests : IDisposable
     public async Task SameSeedProducesSameArguments()
     {
         var outDir1 = Path.Combine(_tempDir, "out7a");
-        var code1 = await Program.Main(new[] { "run", "--output", outDir1, "-s", "77" });
+        var code1 = await Run("run", "--output", outDir1, "-s", "77");
         Assert.Equal(0, code1);
         var args1 = _runner.StartInfo!.ArgumentList.ToArray();
 
         var outDir2 = Path.Combine(_tempDir, "out7b");
-        var code2 = await Program.Main(new[] { "run", "--output", outDir2, "-s", "77" });
+        var code2 = await Run("run", "--output", outDir2, "-s", "77");
         Assert.Equal(0, code2);
         var args2 = _runner.StartInfo!.ArgumentList.ToArray();
 
@@ -107,7 +114,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task ForwardsGenderOption()
     {
         var outDir = Path.Combine(_tempDir, "out8");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--gender", "M" });
+        var code = await Run("run", "--output", outDir, "--gender", "M");
         Assert.Equal(0, code);
         Assert.Contains("--gender", _runner.StartInfo!.ArgumentList);
         Assert.Contains("M", _runner.StartInfo!.ArgumentList);
@@ -117,7 +124,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task InvalidGenderReturnsError()
     {
         var outDir = Path.Combine(_tempDir, "out9");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--gender", "X" });
+        var code = await Run("run", "--output", outDir, "--gender", "X");
         Assert.NotEqual(0, code);
     }
 
@@ -125,7 +132,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task ForwardsAgeRangeOption()
     {
         var outDir = Path.Combine(_tempDir, "out10");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--age-range", "10-20" });
+        var code = await Run("run", "--output", outDir, "--age-range", "10-20");
         Assert.Equal(0, code);
         Assert.Contains("--age-range", _runner.StartInfo!.ArgumentList);
         Assert.Contains("10-20", _runner.StartInfo!.ArgumentList);
@@ -135,7 +142,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task InvalidAgeRangeReturnsError()
     {
         var outDir = Path.Combine(_tempDir, "out11");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--age-range", "a-b" });
+        var code = await Run("run", "--output", outDir, "--age-range", "a-b");
         Assert.NotEqual(0, code);
     }
 
@@ -145,7 +152,7 @@ public class ProgramHandlerTests : IDisposable
         var modDir = Path.Combine(_tempDir, "mods");
         Directory.CreateDirectory(modDir);
         var outDir = Path.Combine(_tempDir, "out12");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--module-dir", modDir });
+        var code = await Run("run", "--output", outDir, "--module-dir", modDir);
         Assert.Equal(0, code);
         Assert.Contains("--module-dir", _runner.StartInfo!.ArgumentList);
         Assert.Contains(modDir, _runner.StartInfo!.ArgumentList);
@@ -155,7 +162,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task InvalidModuleDirReturnsError()
     {
         var outDir = Path.Combine(_tempDir, "out13");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--module-dir", Path.Combine(_tempDir, "nope") });
+        var code = await Run("run", "--output", outDir, "--module-dir", Path.Combine(_tempDir, "nope"));
         Assert.NotEqual(0, code);
     }
 
@@ -166,11 +173,11 @@ public class ProgramHandlerTests : IDisposable
         File.WriteAllText(init, "snap");
         var upd = Path.Combine(_tempDir, "snap_out.json");
         var outDir = Path.Combine(_tempDir, "out17");
-        var code = await Program.Main(new[] {
+        var code = await Run(
             "run", "--output", outDir,
             "--initial-snapshot", init,
             "--updated-snapshot", upd,
-            "--days-forward", "15" });
+            "--days-forward", "15");
         Assert.Equal(0, code);
         var list = _runner.StartInfo!.ArgumentList;
         Assert.Contains("-i", list);
@@ -185,12 +192,12 @@ public class ProgramHandlerTests : IDisposable
     public async Task SnapshotArguments_InvalidInput()
     {
         var outDir = Path.Combine(_tempDir, "out18");
-        var code1 = await Program.Main(new[] { "run", "--output", outDir, "--initial-snapshot", Path.Combine(_tempDir, "missing.json") });
+        var code1 = await Run("run", "--output", outDir, "--initial-snapshot", Path.Combine(_tempDir, "missing.json"));
         Assert.NotEqual(0, code1);
 
         var init = Path.Combine(_tempDir, "snap_in2.json");
         File.WriteAllText(init, "snap");
-        var code2 = await Program.Main(new[] { "run", "--output", outDir, "--initial-snapshot", init, "--days-forward", "0" });
+        var code2 = await Run("run", "--output", outDir, "--initial-snapshot", init, "--days-forward", "0");
         Assert.NotEqual(0, code2);
     }
 
@@ -198,7 +205,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task FormatArgument_ValidFormat()
     {
         var outDir = Path.Combine(_tempDir, "out19");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--format", "FHIR", "--format", "CSV" });
+        var code = await Run("run", "--output", outDir, "--format", "FHIR", "--format", "CSV");
         Assert.Equal(0, code);
         var list = _runner.StartInfo!.ArgumentList;
         Assert.Contains("--exporter.fhir.export=true", list);
@@ -210,7 +217,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task FormatArgument_InvalidFormat()
     {
         var outDir = Path.Combine(_tempDir, "out20");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--format", "BAD" });
+        var code = await Run("run", "--output", outDir, "--format", "BAD");
         Assert.NotEqual(0, code);
     }
 
@@ -218,7 +225,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task ForwardsModuleOption()
     {
         var outDir = Path.Combine(_tempDir, "out14");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--module", "flu", "--module", "covid" });
+        var code = await Run("run", "--output", outDir, "--module", "flu", "--module", "covid");
         Assert.Equal(0, code);
         var list = _runner.StartInfo!.ArgumentList;
         Assert.Equal(new[] { "-jar", _jar.FullName, "--module", "flu", "--module", "covid" }, list);
@@ -228,7 +235,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task CityWithoutStateReturnsError()
     {
         var outDir = Path.Combine(_tempDir, "out15");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--city", "Austin" });
+        var code = await Run("run", "--output", outDir, "--city", "Austin");
         Assert.NotEqual(0, code);
         Assert.Null(_runner.StartInfo);
     }
@@ -240,7 +247,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task InvalidStateFormatReturnsError(string badState)
     {
         var outDir = Path.Combine(_tempDir, Path.GetRandomFileName());
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--state", badState });
+        var code = await Run("run", "--output", outDir, "--state", badState);
         Assert.NotEqual(0, code);
     }
 
@@ -250,7 +257,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task TerritoryStateCodesAreAccepted(string state)
     {
         var outDir = Path.Combine(_tempDir, Path.GetRandomFileName());
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--state", state });
+        var code = await Run("run", "--output", outDir, "--state", state);
         Assert.Equal(0, code);
     }
 
@@ -260,7 +267,7 @@ public class ProgramHandlerTests : IDisposable
         var cfg = Path.Combine(_tempDir, "config.json");
         File.WriteAllText(cfg, "{}");
         var outDir = Path.Combine(_tempDir, "out21");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--config", cfg });
+        var code = await Run("run", "--output", outDir, "--config", cfg);
         Assert.Equal(0, code);
         var list = _runner.StartInfo!.ArgumentList;
         Assert.Contains("-c", list);
@@ -271,7 +278,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task ConfigArgument_InvalidFile()
     {
         var outDir = Path.Combine(_tempDir, "out22");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--config", Path.Combine(_tempDir, "missing.json") });
+        var code = await Run("run", "--output", outDir, "--config", Path.Combine(_tempDir, "missing.json"));
         Assert.NotEqual(0, code);
     }
 
@@ -279,7 +286,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task ZipArgument_ValidZip()
     {
         var outDir = Path.Combine(_tempDir, "out23");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--state", "OH", "--zip", "44101" });
+        var code = await Run("run", "--output", outDir, "--state", "OH", "--zip", "44101");
         Assert.Equal(0, code);
         var list = _runner.StartInfo!.ArgumentList;
         Assert.Equal(new[] { "-jar", _jar.FullName, "OH", "44101" }, list);
@@ -289,7 +296,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task ZipArgument_InvalidZip()
     {
         var outDir = Path.Combine(_tempDir, "out24");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--state", "OH", "--zip", "bad" });
+        var code = await Run("run", "--output", outDir, "--state", "OH", "--zip", "bad");
         Assert.NotEqual(0, code);
     }
 
@@ -297,7 +304,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task FhirVersionArgument_Valid()
     {
         var outDir = Path.Combine(_tempDir, "out25");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--fhir-version", "R4" });
+        var code = await Run("run", "--output", outDir, "--fhir-version", "R4");
         Assert.Equal(0, code);
         Assert.Contains("--exporter.fhir.version=R4", _runner.StartInfo!.ArgumentList);
     }
@@ -306,7 +313,7 @@ public class ProgramHandlerTests : IDisposable
     public async Task FhirVersionArgument_Invalid()
     {
         var outDir = Path.Combine(_tempDir, "out26");
-        var code = await Program.Main(new[] { "run", "--output", outDir, "--fhir-version", "XYZ" });
+        var code = await Run("run", "--output", outDir, "--fhir-version", "XYZ");
         Assert.NotEqual(0, code);
     }
 
@@ -327,5 +334,17 @@ public class ProgramHandlerTests : IDisposable
             public Task WaitForExitAsync() => Task.CompletedTask;
             public void Dispose() { }
         }
+    }
+
+    private sealed class StubJarSource : IJarSource
+    {
+        private readonly FileInfo _jar;
+        public StubJarSource(FileInfo jar) => _jar = jar;
+        public FileInfo? TryFindCachedJar() => _jar;
+        public Task<FileInfo> EnsureJarAsync(
+            bool forceRefresh = false,
+            IProgress<(long downloaded, long total)>? prog = null,
+            CancellationToken token = default)
+            => Task.FromResult(_jar);
     }
 }

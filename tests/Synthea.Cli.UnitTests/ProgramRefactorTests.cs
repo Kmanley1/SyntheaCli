@@ -3,7 +3,10 @@ using System.IO;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Parsing;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Synthea.Cli;
 using Xunit;
 
@@ -21,7 +24,7 @@ public class ProgramRefactorTests
     {
         var refreshOpt = new Option<bool>("--refresh");
         var javaOpt = new Option<string?>("--java-path");
-        var run = RunCommand.Build(refreshOpt, javaOpt);
+        var run = RunCommand.Build(new NoopRunner(), new NoopJarSource(), refreshOpt, javaOpt);
 
         var stateOpt = run.Options.Single(o => o.Name == "--state");
         Assert.NotEmpty(stateOpt.Validators);
@@ -203,6 +206,21 @@ public class ProgramRefactorTests
         Assert.Equal(tmpDir, psi.WorkingDirectory);
         Assert.Contains("-jar", psi.ArgumentList);
         Assert.Contains(jar.FullName, psi.ArgumentList);
+    }
+
+    private sealed class NoopRunner : IProcessRunner
+    {
+        public IProcess Start(ProcessStartInfo psi) => throw new NotSupportedException();
+    }
+
+    private sealed class NoopJarSource : IJarSource
+    {
+        public FileInfo? TryFindCachedJar() => null;
+        public Task<FileInfo> EnsureJarAsync(
+            bool forceRefresh = false,
+            IProgress<(long downloaded, long total)>? prog = null,
+            CancellationToken token = default)
+            => throw new NotSupportedException();
     }
 }
 

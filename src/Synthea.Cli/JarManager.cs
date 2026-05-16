@@ -7,13 +7,22 @@ using System.Text.Json;
 
 namespace Synthea.Cli;
 
-internal static class JarManager
+internal interface IJarSource
+{
+    FileInfo? TryFindCachedJar();
+    Task<FileInfo> EnsureJarAsync(
+        bool forceRefresh = false,
+        IProgress<(long downloaded, long total)>? prog = null,
+        CancellationToken token = default);
+}
+
+internal sealed class JarManager : IJarSource
 {
     private const string Repo = "synthetichealth/synthea";
     private const string JarHint = "with-dependencies.jar";   // asset we want
     private const string ShaHint = ".sha256";                 // checksum (if provided)
 
-    internal static HttpClient Http = new()
+    private static HttpClient CreateDefaultClient() => new()
     {
         DefaultRequestHeaders =
         {
@@ -21,17 +30,27 @@ internal static class JarManager
         }
     };
 
-    internal static string? CacheRootOverride { get; set; }
+    private readonly HttpClient _http;
+    private readonly string? _cacheRootOverride;
+
+    public JarManager()
+        : this(http: null, cacheRootOverride: null)
+    {
+    }
+
+    public JarManager(HttpClient? http = null, string? cacheRootOverride = null)
+    {
+        _http = http ?? CreateDefaultClient();
+        _cacheRootOverride = cacheRootOverride;
+    }
 
     /// <summary>
     /// Returns the newest cached Synthea JAR if one exists, without any
     /// network call. Returns null if the cache is empty or missing.
     /// </summary>
-    internal static FileInfo? TryFindCachedJar()
+    public FileInfo? TryFindCachedJar()
     {
-        var cacheRoot = CacheRootOverride ??
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var cacheDir = Path.Combine(cacheRoot, "Synthea.Cli");
+        var cacheDir = ResolveCacheDir();
         if (!Directory.Exists(cacheDir)) return null;
         var cached = Directory.GetFiles(cacheDir, $"*{JarHint}")
                               .OrderByDescending(File.GetLastWriteTimeUtc)
@@ -43,15 +62,12 @@ internal static class JarManager
     /// Ensures the Synthea JAR is present in the local cache.
     /// Returns the full FileInfo.
     /// </summary>
-    internal static async Task<FileInfo> EnsureJarAsync(
+    public async Task<FileInfo> EnsureJarAsync(
         bool forceRefresh = false,
         IProgress<(long downloaded, long total)>? prog = null,
         CancellationToken token = default)
     {
-        var cacheRoot = CacheRootOverride ??
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var cacheDir = Path.Combine(cacheRoot, "Synthea.Cli");
-
+        var cacheDir = ResolveCacheDir();
         Directory.CreateDirectory(cacheDir);
 
         // Re-use the newest cached JAR unless caller forces refresh
@@ -62,7 +78,7 @@ internal static class JarManager
             return new FileInfo(cached);
 
         // --- Query GitHub API for latest release ---
-        var releaseJson = await Http.GetStringAsync(
+        var releaseJson = await _http.GetStringAsync(
             $"https://api.github.com/repos/{Repo}/releases/latest", token);
 
         using var doc = JsonDocument.Parse(releaseJson);
@@ -108,7 +124,7 @@ internal static class JarManager
             // --- Optional checksum verification ---
             if (shaUrl is not null)
             {
-                var expected = (await Http.GetStringAsync(shaUrl, token))
+                var expected = (await _http.GetStringAsync(shaUrl, token))
                                .Split(' ', StringSplitOptions.RemoveEmptyEntries)[0]
                                .Trim();
                 var actual = await HashFileAsync(tmpFile, token);
@@ -131,13 +147,20 @@ internal static class JarManager
         return new FileInfo(jarFile);
     }
 
-    private static async Task DownloadAsync(
+    private string ResolveCacheDir()
+    {
+        var cacheRoot = _cacheRootOverride ??
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        return Path.Combine(cacheRoot, "Synthea.Cli");
+    }
+
+    private async Task DownloadAsync(
         string url, string dest,
         IProgress<(long, long)>? prog,
         CancellationToken token)
     {
         // HttpResponseMessage implements IDisposable (not IAsyncDisposable) → plain using
-        using var resp = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token);
+        using var resp = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token);
         resp.EnsureSuccessStatusCode();
 
         var total = resp.Content.Headers.ContentLength ?? -1L;
