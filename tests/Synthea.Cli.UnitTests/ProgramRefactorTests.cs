@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Synthea.Cli;
 using Xunit;
 
@@ -206,6 +207,17 @@ public class ProgramRefactorTests
         Assert.Equal(tmpDir, psi.WorkingDirectory);
         Assert.Contains("-jar", psi.ArgumentList);
         Assert.Contains(jar.FullName, psi.ArgumentList);
+    }
+
+    [Theory]
+    [InlineData(new string[0], LogLevel.Information)]
+    [InlineData(new[] { "--verbose" }, LogLevel.Debug)]
+    [InlineData(new[] { "--quiet" }, LogLevel.Warning)]
+    [InlineData(new[] { "--verbose", "--quiet" }, LogLevel.Debug)]   // verbose wins
+    [InlineData(new[] { "run", "--quiet", "--output", "/tmp/x" }, LogLevel.Warning)]
+    public void DetectLogLevel_MapsVerbosityFlags(string[] args, LogLevel expected)
+    {
+        Assert.Equal(expected, Program.DetectLogLevel(args));
     }
 
     private sealed class NoopRunner : IProcessRunner

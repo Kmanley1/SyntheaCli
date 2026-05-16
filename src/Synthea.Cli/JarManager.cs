@@ -4,6 +4,8 @@
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Synthea.Cli;
 
@@ -32,16 +34,18 @@ internal sealed class JarManager : IJarSource
 
     private readonly HttpClient _http;
     private readonly string? _cacheRootOverride;
+    private readonly ILogger<JarManager> _logger;
 
     public JarManager()
-        : this(http: null, cacheRootOverride: null)
+        : this(http: null, cacheRootOverride: null, logger: null)
     {
     }
 
-    public JarManager(HttpClient? http = null, string? cacheRootOverride = null)
+    public JarManager(HttpClient? http = null, string? cacheRootOverride = null, ILogger<JarManager>? logger = null)
     {
         _http = http ?? CreateDefaultClient();
         _cacheRootOverride = cacheRootOverride;
+        _logger = logger ?? NullLogger<JarManager>.Instance;
     }
 
     /// <summary>
@@ -75,9 +79,13 @@ internal sealed class JarManager : IJarSource
                               .OrderByDescending(File.GetLastWriteTimeUtc)
                               .FirstOrDefault();
         if (cached is not null && !forceRefresh)
+        {
+            _logger.LogDebug("Using cached Synthea JAR at {Path}", cached);
             return new FileInfo(cached);
+        }
 
         // --- Query GitHub API for latest release ---
+        _logger.LogInformation("Querying GitHub for the latest Synthea release");
         var releaseJson = await _http.GetStringAsync(
             $"https://api.github.com/repos/{Repo}/releases/latest", token);
 
@@ -119,6 +127,7 @@ internal sealed class JarManager : IJarSource
         var tmpFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         try
         {
+            _logger.LogInformation("Downloading Synthea JAR from {Url}", jarUrl);
             await DownloadAsync(jarUrl, tmpFile, prog, token);
 
             // --- Optional checksum verification ---
@@ -133,6 +142,7 @@ internal sealed class JarManager : IJarSource
             }
 
             File.Move(tmpFile, jarFile, overwrite: true);
+            _logger.LogInformation("Cached Synthea JAR at {Path}", jarFile);
         }
         finally
         {
