@@ -36,6 +36,7 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
 | **Configurable cache** | Stores the JAR under `%LOCALAPPDATA%\Synthea.Cli` on Windows and `~/.local/share/Synthea.Cli` on Linux/macOS; refresh anytime with `--refresh`. |
 | **Friendly flags** | `--state OH`, `--city "Columbus"`, `--output ./data`, `--seed 42`, `--initial-snapshot snap.json`, `--format FHIR` map directly to Synthea flags. |
 | **Additive formats** | `--format` is exclusive (enables only the named formats, disables the rest). Use `--add-format` (repeatable) to enable a format additively without overriding Synthea defaults. |
+| **Verbosity control** | `--verbose` enables debug logs; `--quiet` suppresses info logs (warnings and errors still print). Default is info-level via `Microsoft.Extensions.Logging`. |
 | **Portable** | Runs on Windows, macOS, Linux—wherever .NET 8 + Java 11+ are available. |
 | **Unit-tested** | Complete test coverage via xUnit and Coverlet; network & process calls are fully mocked. |
 
@@ -71,6 +72,12 @@ synthea run -o ./output --population 10 --state OH --add-format CCDA
 
 # Print the java invocation that would be run, without running it
 synthea run -o ./output --population 5 --state OH --print-args
+
+# Debug-level logs (download URLs, cache hits, every internal step)
+synthea --verbose run -o ./output --population 5 --state OH
+
+# Suppress info logs; only warnings and errors print
+synthea --quiet run -o ./output --population 5 --state OH
 ```
 
 > **Short alias:** `syn` works everywhere `synthea` does.

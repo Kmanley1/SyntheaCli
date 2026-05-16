@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Synthea.Cli;
 using Xunit;
 
@@ -57,6 +59,30 @@ public class JarManagerTests : IDisposable
     }
 
     [Fact]
+    public async Task LogsDownloadProgress_AtInformation()
+    {
+        // Capturing logger provider observes JarManager's Information-level
+        // entries during a download. The earlier static-Console.Write pattern
+        // is gone; this pins the swap so a regression to silent or
+        // Console-based output is caught. (A-11)
+        var releaseJson = "{\"assets\":[{\"name\":\"synthea-with-dependencies.jar\",\"browser_download_url\":\"http://host/jar\"}]}";
+        var texts = new Dictionary<string, string> { { "https://api.github.com/repos/synthetichealth/synthea/releases/latest", releaseJson } };
+        var bins = new Dictionary<string, byte[]> { { "http://host/jar", new byte[] { 9, 9, 9 } } };
+
+        var captured = new List<(LogLevel Level, string Message)>();
+        using var factory = LoggerFactory.Create(b =>
+        {
+            b.SetMinimumLevel(LogLevel.Trace);
+            b.AddProvider(new CapturingLoggerProvider(captured));
+        });
+
+        var jm = new JarManager(CreateClient(texts, bins), _tempDir, factory.CreateLogger<JarManager>());
+        await jm.EnsureJarAsync();
+
+        Assert.Contains(captured, e => e.Level == LogLevel.Information && e.Message.Contains("Synthea", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task ThrowsWhenChecksumMismatch()
     {
         var releaseJson = "{\"assets\":[{\"name\":\"synthea-with-dependencies.jar\",\"browser_download_url\":\"http://host/jar\"},{\"name\":\"synthea.jar.sha256\",\"browser_download_url\":\"http://host/jar.sha\"}]}";
@@ -70,6 +96,32 @@ public class JarManagerTests : IDisposable
 
         var jm = new JarManager(CreateClient(texts, bins), _tempDir);
         await Assert.ThrowsAsync<InvalidOperationException>(() => jm.EnsureJarAsync());
+    }
+
+    private sealed class CapturingLoggerProvider : ILoggerProvider
+    {
+        private readonly List<(LogLevel Level, string Message)> _sink;
+        public CapturingLoggerProvider(List<(LogLevel, string)> sink) => _sink = sink;
+        public ILogger CreateLogger(string categoryName) => new CapturingLogger(_sink);
+        public void Dispose() { }
+
+        private sealed class CapturingLogger : ILogger
+        {
+            private readonly List<(LogLevel, string)> _sink;
+            public CapturingLogger(List<(LogLevel, string)> sink) => _sink = sink;
+            public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+            public bool IsEnabled(LogLevel logLevel) => true;
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                lock (_sink) _sink.Add((logLevel, formatter(state, exception)));
+            }
+        }
+
+        private sealed class NullScope : IDisposable
+        {
+            public static readonly NullScope Instance = new();
+            public void Dispose() { }
+        }
     }
 
     private class StubHandler : HttpMessageHandler
