@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace Synthea.Cli;
 
-public static class Program
+internal static class Program
 {
-    public static IProcessRunner Runner { get; set; } = new DefaultProcessRunner();
-    public static Func<bool, IProgress<(long, long)>?, CancellationToken, Task<FileInfo>> EnsureJarAsyncFunc { get; set; } = JarManager.EnsureJarAsync;
+    internal static IProcessRunner Runner { get; set; } = new DefaultProcessRunner();
+    internal static Func<bool, IProgress<(long, long)>?, CancellationToken, Task<FileInfo>> EnsureJarAsyncFunc { get; set; } = JarManager.EnsureJarAsync;
 
     public static async Task<int> Main(string[] args)
     {

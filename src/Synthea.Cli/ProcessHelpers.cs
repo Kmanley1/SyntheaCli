@@ -5,12 +5,12 @@ using System.IO;
 
 namespace Synthea.Cli;
 
-public interface IProcessRunner
+internal interface IProcessRunner
 {
     IProcess Start(ProcessStartInfo psi);
 }
 
-public interface IProcess : IDisposable
+internal interface IProcess : IDisposable
 {
     StreamReader StandardOutput { get; }
     StreamReader StandardError { get; }
@@ -18,7 +18,7 @@ public interface IProcess : IDisposable
     int ExitCode { get; }
 }
 
-public sealed class DefaultProcessRunner : IProcessRunner
+internal sealed class DefaultProcessRunner : IProcessRunner
 {
     public IProcess Start(ProcessStartInfo psi) => new ProcessWrapper(Process.Start(psi)!);
 

@@ -7,7 +7,7 @@ using System.Text.Json;
 
 namespace Synthea.Cli;
 
-public static class JarManager
+internal static class JarManager
 {
     private const string Repo = "synthetichealth/synthea";
     private const string JarHint = "with-dependencies.jar";   // asset we want
@@ -27,7 +27,7 @@ public static class JarManager
     /// Ensures the Synthea JAR is present in the local cache.
     /// Returns the full FileInfo.
     /// </summary>
-    public static async Task<FileInfo> EnsureJarAsync(
+    internal static async Task<FileInfo> EnsureJarAsync(
         bool forceRefresh = false,
         IProgress<(long downloaded, long total)>? prog = null,
         CancellationToken token = default)
