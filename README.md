@@ -20,7 +20,6 @@ The tool downloads the latest Synthea JAR on first use, caches it locally, and g
   - [Docker](#docker)
   - [`setup.sh` for CI / Codex](#setupsh-for-ci--codex)
     - [GitHub Actions example](#github-actions-example)
-  - [Pre/Post Context Tasks](#prepost-context-tasks)
   - [Running Integration Tests](#running-integration-tests)
 - [Project Layout](#project-layout)
 - [Contributing](#contributing)
@@ -90,8 +89,8 @@ dotnet test --collect:"XPlat Code Coverage"
 # Coverage report in ./TestResults/**/coverage.cobertura.xml
 ```
 
-The project includes **44 comprehensive tests**:
-- **40 unit tests** covering all CLI functionality, validation logic, and edge cases  
+The project includes **37 comprehensive tests**:
+- **33 unit tests** covering all CLI functionality, validation logic, and edge cases
 - **4 integration tests** with actual Java/Synthea execution and file generation validation
 
 All tests use xUnit framework with full mocking for network and process calls.
@@ -150,16 +149,6 @@ steps:
   - run: dotnet /workspace/synthea-cli/bin/Synthea.Cli.dll -- --help
 ```
 
-### Pre/Post Context Tasks
-
-Task automation uses a `tasks/context` folder for reusable setup snippets. Pre-task files
-in `tasks/context/pre/` run before each normal task, while post-task files in
-`tasks/context/post/` run afterward. These context files stay in place and are
-never moved. Only non-context tasks are moved to `tasks/implemented` after
-successful completion.
-
-See [docs/deliverables/codex-automation.md](docs/deliverables/codex-automation.md) for more details.
-
 ### Running Integration Tests
 
 Execute all integration tests with:
@@ -203,7 +192,6 @@ SyntheaCli/
 │   ├─ RunOptions.cs             # Command options definitions
 │   ├─ JarManager.cs             # JAR download & cache helper
 │   ├─ ProcessHelpers.cs         # Process execution utilities
-│   ├─ CodexTaskProcessor.cs     # Task automation support
 │   └─ Synthea.Cli.csproj
 ├─ tests/
 │   ├─ Synthea.Cli.UnitTests/           # unit tests (xUnit)
@@ -211,7 +199,6 @@ SyntheaCli/
 │   │   ├─ JarManagerTests.cs
 │   │   ├─ ProgramHandlerTests.cs
 │   │   ├─ ProgramRefactorTests.cs
-│   │   ├─ CodexTaskProcessorTests.cs
 │   │   └─ Synthea.Cli.UnitTests.csproj
 │   └─ Synthea.Cli.IntegrationTests/     # integration tests (xUnit)
 │       ├─ ScaffoldingSmokeTest.cs
