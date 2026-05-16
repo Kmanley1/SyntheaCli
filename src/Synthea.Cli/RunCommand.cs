@@ -346,7 +346,7 @@ internal static class RunCommand
             JarPath: parseResult.GetValue(jarOpt),
             InsistChecksum: parseResult.GetValue(insistChecksumOpt));
         var args = new SyntheaArgs(
-            State: parseResult.GetValue(stateOpt),
+            State: UsStates.Normalize(parseResult.GetValue(stateOpt)),
             City: parseResult.GetValue(cityOpt),
             Gender: parseResult.GetValue(genderOpt),
             AgeRange: parseResult.GetValue(ageOpt),
@@ -413,16 +413,26 @@ internal static class RunCommand
 
     private static Option<string?> CreateStateOption()
     {
-        // Format-only check (two letters). The previous 50-entry US-state
-        // allowlist silently rejected DC, PR, GU, VI, and any future
-        // Synthea-supported geo codes. Defer the "is this a real place?"
-        // check to Synthea itself, which owns the geo data.
+        // Accept either a 2-letter USPS code (e.g. "OH") or a full state
+        // name (e.g. "Ohio", "New Hampshire"). 2-letter codes are
+        // converted to the full name in ParseRunOptions before passthru,
+        // because Synthea's geography data is keyed by full name and
+        // rejects bare 2-letter codes with "Unable to select a random
+        // city id."
         var opt = new Option<string?>("--state")
         {
-            Description = "Two-letter state/territory code (e.g. OH, TX, DC, PR). Format-only check; Synthea rejects unknown codes itself."
+            Description = "State name (e.g. 'Ohio') or two-letter USPS code (e.g. 'OH'). 2-letter codes are converted to the full name automatically. Synthea owns the place-existence check."
         };
         opt.Validators.Add(SingleTokenValidator(v =>
-            v.Length == 2 && v.All(char.IsLetter) ? null : "State code must be exactly two letters."));
+        {
+            if (v.Length == 2 && v.All(char.IsLetter))
+            {
+                return UsStates.IsKnownCode(v)
+                    ? null
+                    : $"Unknown 2-letter state code '{v.ToUpperInvariant()}'. Use a USPS code (e.g. OH, TX, DC) or the full name (e.g. Ohio).";
+            }
+            return v.Length >= 3 ? null : "State must be a 2-letter USPS code or the full state name.";
+        }));
         return opt;
     }
 

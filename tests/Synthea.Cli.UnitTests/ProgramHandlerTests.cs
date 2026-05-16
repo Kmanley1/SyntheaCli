@@ -41,14 +41,54 @@ public class ProgramHandlerTests : IDisposable
     public async Task BuildsProcessStartInfoWithStateAndCity()
     {
         var outDir = Path.Combine(_tempDir, "out1");
+        // 2-letter code on input; CLI normalizes to "Ohio" before passthru
+        // because Synthea's geography data is keyed by full state name.
         var code = await Run("run", "--output", outDir, "--state", "OH", "--city", "Cleveland");
         Assert.Equal(0, code);
 
         var psi = _runner.StartInfo!;
         Assert.Equal("java", psi.FileName);
         Assert.Equal(outDir, psi.WorkingDirectory);
-        Assert.Equal(new[] { "-jar", _jar.FullName, "OH", "Cleveland" }, psi.ArgumentList);
+        Assert.Equal(new[] { "-jar", _jar.FullName, "Ohio", "Cleveland" }, psi.ArgumentList);
         Assert.True(Directory.Exists(outDir));
+    }
+
+    [Fact]
+    public async Task StateFullName_PassesThroughUnchanged()
+    {
+        var outDir = Path.Combine(_tempDir, "out-state-fullname");
+        var code = await Run("run", "--output", outDir, "--state", "Massachusetts");
+        Assert.Equal(0, code);
+
+        Assert.Equal(new[] { "-jar", _jar.FullName, "Massachusetts" }, _runner.StartInfo!.ArgumentList);
+    }
+
+    [Fact]
+    public async Task StateMultiWordFullName_PassesThroughUnchanged()
+    {
+        var outDir = Path.Combine(_tempDir, "out-state-multiword");
+        var code = await Run("run", "--output", outDir, "--state", "New Hampshire");
+        Assert.Equal(0, code);
+
+        Assert.Equal(new[] { "-jar", _jar.FullName, "New Hampshire" }, _runner.StartInfo!.ArgumentList);
+    }
+
+    [Fact]
+    public async Task StateLowercaseCode_NormalizedToFullName()
+    {
+        var outDir = Path.Combine(_tempDir, "out-state-lower");
+        var code = await Run("run", "--output", outDir, "--state", "tx");
+        Assert.Equal(0, code);
+
+        Assert.Equal(new[] { "-jar", _jar.FullName, "Texas" }, _runner.StartInfo!.ArgumentList);
+    }
+
+    [Fact]
+    public async Task InvalidStateCodeReturnsError()
+    {
+        var outDir = Path.Combine(_tempDir, "out-state-bad");
+        var code = await Run("run", "--output", outDir, "--state", "ZZ");
+        Assert.NotEqual(0, code);
     }
 
     [Fact]
@@ -241,9 +281,10 @@ public class ProgramHandlerTests : IDisposable
     }
 
     [Theory]
-    [InlineData("X")]      // too short
-    [InlineData("XYZ")]    // too long
-    [InlineData("X1")]     // not all letters
+    [InlineData("X")]      // single letter — neither a 2-letter code nor a plausible state name
+    [InlineData("X1")]     // 2-char but not all letters
+    [InlineData("ZZ")]     // 2-letter shape but not a real USPS code
+    [InlineData("99")]     // 2-char digits — fails the 2-letter and the >=3 checks
     public async Task InvalidStateFormatReturnsError(string badState)
     {
         var outDir = Path.Combine(_tempDir, Path.GetRandomFileName());
@@ -286,10 +327,11 @@ public class ProgramHandlerTests : IDisposable
     public async Task ZipArgument_ValidZip()
     {
         var outDir = Path.Combine(_tempDir, "out23");
+        // OH normalizes to Ohio for the passthru (Synthea wants full names).
         var code = await Run("run", "--output", outDir, "--state", "OH", "--zip", "44101");
         Assert.Equal(0, code);
         var list = _runner.StartInfo!.ArgumentList;
-        Assert.Equal(new[] { "-jar", _jar.FullName, "OH", "44101" }, list);
+        Assert.Equal(new[] { "-jar", _jar.FullName, "Ohio", "44101" }, list);
     }
 
     [Fact]
