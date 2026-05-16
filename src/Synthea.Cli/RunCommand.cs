@@ -44,6 +44,7 @@ internal static class RunCommand
         var updatedSnapOpt = CreateUpdatedSnapshotOption();
         var daysForwardOpt = CreateDaysForwardOption();
         var formatOpt = CreateFormatOption();
+        var addFormatOpt = CreateAddFormatOption();
         var printArgsOpt = new Option<bool>("--print-args")
         {
             Description = "Print the java command line that would be run, then exit without running it. " +
@@ -67,6 +68,7 @@ internal static class RunCommand
         runCmd.Options.Add(updatedSnapOpt);
         runCmd.Options.Add(daysForwardOpt);
         runCmd.Options.Add(formatOpt);
+        runCmd.Options.Add(addFormatOpt);
         runCmd.Options.Add(printArgsOpt);
         runCmd.Arguments.Add(passthru);
 
@@ -76,7 +78,7 @@ internal static class RunCommand
         {
             var (hosting, args) = ParseRunOptions(parseResult, refreshOpt, javaOpt, outputOpt, stateOpt, cityOpt,
                 genderOpt, ageOpt, moduleDirOpt, moduleOpt, popOpt, seedOpt, configOpt, zipOpt,
-                fhirVerOpt, initialSnapOpt, updatedSnapOpt, daysForwardOpt, formatOpt, passthru);
+                fhirVerOpt, initialSnapOpt, updatedSnapOpt, daysForwardOpt, formatOpt, addFormatOpt, passthru);
             var printArgs = parseResult.GetValue(printArgsOpt);
 
             if (!string.IsNullOrWhiteSpace(args.City) && string.IsNullOrWhiteSpace(args.State))
@@ -216,23 +218,34 @@ internal static class RunCommand
         {
             argList.Add("--exporter.fhir.version=" + o.FhirVersion!.ToUpperInvariant());
         }
+        var formatPropertyMap = new Dictionary<string, string>
+        {
+            ["fhir"] = "exporter.fhir.export",
+            ["csv"] = "exporter.csv.export",
+            ["ccda"] = "exporter.ccda.export",
+            ["bulkfhir"] = "exporter.fhir.bulk_data",
+            ["bulk-fhir"] = "exporter.fhir.bulk_data",
+            ["cpcds"] = "exporter.cpcds.export"
+        };
         if (o.Formats.Length > 0)
         {
+            // Exclusive: enable named formats, disable everything else.
             var set = new HashSet<string>(o.Formats.Select(f => f.ToLowerInvariant()));
-            var map = new Dictionary<string, string>
+            foreach (var kv in formatPropertyMap)
             {
-                ["fhir"] = "exporter.fhir.export",
-                ["csv"] = "exporter.csv.export",
-                ["ccda"] = "exporter.ccda.export",
-                ["bulkfhir"] = "exporter.fhir.bulk_data",
-                ["cpcds"] = "exporter.cpcds.export"
-            };
-            foreach (var kv in map)
-            {
+                if (kv.Key == "bulk-fhir") continue; // alias; emitted via bulkfhir entry
                 var enable = set.Contains(kv.Key) ||
                              (kv.Key == "bulkfhir" && (set.Contains("bulk-fhir") || set.Contains("bulkfhir")));
                 argList.Add("--" + kv.Value + "=" + (enable ? "true" : "false"));
             }
+        }
+        foreach (var f in o.AdditionalFormats)
+        {
+            // Additive: enable each named format without disabling anything else.
+            // Synthea evaluates --exporter.X.export=true|false in order, so an
+            // additive "=true" after an exclusive "=false" wins.
+            if (formatPropertyMap.TryGetValue(f.ToLowerInvariant(), out var prop))
+                argList.Add("--" + prop + "=true");
         }
         // Positional state/city/zip must precede passthru tokens. Otherwise a
         // passthru flag that takes a value (e.g. `--some-flag`) could swallow
@@ -307,6 +320,7 @@ internal static class RunCommand
         Option<FileInfo?> updSnapOpt,
         Option<int?> daysOpt,
         Option<string[]> formatOpt,
+        Option<string[]> addFormatOpt,
         Argument<string[]> passthru)
     {
         var javaPathArg = parseResult.GetValue(javaOpt);
@@ -330,6 +344,7 @@ internal static class RunCommand
             UpdatedSnapshot: parseResult.GetValue(updSnapOpt),
             DaysForward: parseResult.GetValue(daysOpt),
             Formats: parseResult.GetValue(formatOpt) ?? Array.Empty<string>(),
+            AdditionalFormats: parseResult.GetValue(addFormatOpt) ?? Array.Empty<string>(),
             Passthru: parseResult.GetValue(passthru) ?? Array.Empty<string>());
         return (hosting, args);
     }
@@ -507,7 +522,22 @@ internal static class RunCommand
     {
         var opt = new Option<string[]>("--format")
         {
-            Description = "Output formats to generate (FHIR, CSV, CCDA, BULKFHIR, CPCDS)",
+            Description = "Output formats to generate (FHIR, CSV, CCDA, BULKFHIR, CPCDS). " +
+                          "Exclusive: enables only the named formats and disables all others. " +
+                          "Use --add-format to extend Synthea defaults instead.",
+            Arity = ArgumentArity.ZeroOrMore
+        };
+        opt.Validators.Add(MultiTokenValidator(v =>
+            AllowedFormats.Contains(v) ? null : $"Unsupported format '{v}'."));
+        return opt;
+    }
+
+    private static Option<string[]> CreateAddFormatOption()
+    {
+        var opt = new Option<string[]>("--add-format")
+        {
+            Description = "Additive format to enable in addition to Synthea defaults (FHIR, CSV, CCDA, BULKFHIR, CPCDS). " +
+                          "Repeatable. Does not disable any other format; see --format for exclusive semantics.",
             Arity = ArgumentArity.ZeroOrMore
         };
         opt.Validators.Add(MultiTokenValidator(v =>

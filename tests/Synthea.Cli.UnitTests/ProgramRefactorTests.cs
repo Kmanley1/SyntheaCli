@@ -56,6 +56,7 @@ public class ProgramRefactorTests
             UpdatedSnapshot: null,
             DaysForward: null,
             Formats: new[] { "fhir" },
+            AdditionalFormats: System.Array.Empty<string>(),
             Passthru: new[] { "--extra" });
 
         var list = RunCommand.BuildArgumentList(args);
@@ -89,6 +90,51 @@ public class ProgramRefactorTests
     }
 
     [Fact]
+    public void BuildArgumentList_FormatPlusAddFormat_EmitsBoth()
+    {
+        // Exclusive --format CSV disables all other formats. --add-format CCDA
+        // then re-enables CCDA additively. Synthea reads the args in order,
+        // so the later =true wins. (A-8)
+        var args = new SyntheaArgs(
+            State: null, City: null, Gender: null, AgeRange: null,
+            ModuleDir: null, Modules: null, Population: null, Seed: null,
+            Config: null, Zip: null, FhirVersion: null,
+            InitialSnapshot: null, UpdatedSnapshot: null, DaysForward: null,
+            Formats: new[] { "csv" },
+            AdditionalFormats: new[] { "ccda" },
+            Passthru: System.Array.Empty<string>());
+
+        var list = RunCommand.BuildArgumentList(args);
+        Assert.Contains("--exporter.csv.export=true", list);
+        // Exclusive run sets ccda=false first; additive must come *after*.
+        var ccdaFalseIdx = list.IndexOf("--exporter.ccda.export=false");
+        var ccdaTrueIdx = list.IndexOf("--exporter.ccda.export=true");
+        Assert.True(ccdaFalseIdx >= 0, "exclusive should emit ccda=false");
+        Assert.True(ccdaTrueIdx >= 0, "additive should emit ccda=true");
+        Assert.True(ccdaFalseIdx < ccdaTrueIdx,
+            $"additive ccda=true ({ccdaTrueIdx}) must follow exclusive ccda=false ({ccdaFalseIdx}) so Synthea picks =true.");
+    }
+
+    [Fact]
+    public void BuildArgumentList_AddFormatAlone_IsAdditiveOnly()
+    {
+        // Without --format, --add-format must only enable the named format —
+        // not emit any =false entries for the others.
+        var args = new SyntheaArgs(
+            State: null, City: null, Gender: null, AgeRange: null,
+            ModuleDir: null, Modules: null, Population: null, Seed: null,
+            Config: null, Zip: null, FhirVersion: null,
+            InitialSnapshot: null, UpdatedSnapshot: null, DaysForward: null,
+            Formats: System.Array.Empty<string>(),
+            AdditionalFormats: new[] { "csv" },
+            Passthru: System.Array.Empty<string>());
+
+        var list = RunCommand.BuildArgumentList(args);
+        Assert.Contains("--exporter.csv.export=true", list);
+        Assert.DoesNotContain(list, s => s.EndsWith("=false"));
+    }
+
+    [Fact]
     public void Passthru_DoesNotSwallowPositionalState()
     {
         // A passthru value-flag like `--some-flag OH` would, in the old
@@ -110,6 +156,7 @@ public class ProgramRefactorTests
             UpdatedSnapshot: null,
             DaysForward: null,
             Formats: System.Array.Empty<string>(),
+            AdditionalFormats: System.Array.Empty<string>(),
             Passthru: new[] { "--some-flag" });
 
         var list = RunCommand.BuildArgumentList(args);
@@ -147,6 +194,7 @@ public class ProgramRefactorTests
             UpdatedSnapshot: null,
             DaysForward: null,
             Formats: System.Array.Empty<string>(),
+            AdditionalFormats: System.Array.Empty<string>(),
             Passthru: System.Array.Empty<string>());
 
         var jar = new FileInfo(Path.Combine(tmpDir, "synthea.jar"));
