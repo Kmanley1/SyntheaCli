@@ -81,6 +81,7 @@ internal static class RunCommand
         {
             Description = "Emit FHIR resources as bulk-data NDJSON (--exporter.fhir.bulk_data=true)."
         };
+        var javaHeapOpt = CreateJavaHeapOption();                 // C3
         var passthru = CreatePassthruArgument();
 
         runCmd.Options.Add(outputOpt);
@@ -114,6 +115,7 @@ internal static class RunCommand
         runCmd.Options.Add(flexporterOpt);
         runCmd.Options.Add(igDirOpt);
         runCmd.Options.Add(bulkDataOpt);
+        runCmd.Options.Add(javaHeapOpt);
         runCmd.Arguments.Add(passthru);
 
         runCmd.TreatUnmatchedTokensAsErrors = false;
@@ -126,6 +128,10 @@ internal static class RunCommand
                 jarOpt, insistChecksumOpt, passthru,
                 referenceDateOpt, endDateOpt, allowFutureEndOpt, clinicianSeedOpt, singlePersonSeedOpt, overflowOpt,
                 propertyOpt, usCoreVerOpt, flexporterOpt, igDirOpt, bulkDataOpt);
+            // C3: heap override lives outside the hosting/args records — it
+            // affects only the JVM line we build below, not anything Synthea
+            // sees or anything the test fixtures need to know about.
+            var heapOverride = parseResult.GetValue(javaHeapOpt);
             var printArgs = parseResult.GetValue(printArgsOpt);
 
             // C7: malformed ~/.synthea-cli/config.json must fail the run with
@@ -156,7 +162,7 @@ internal static class RunCommand
 
             if (printArgs)
             {
-                return PrintInvocation(hosting, args, jarSource);
+                return PrintInvocation(hosting, args, jarSource, heapOverride);
             }
 
             var skipJdk = parseResult.GetValue(skipJdkCheckOpt);
@@ -200,7 +206,7 @@ internal static class RunCommand
                 if (interactive) Console.WriteLine();
                 Console.WriteLine($"✓ Using {jar.Name}  ({jar.FullName})");
 
-                var psi = CreateProcessStartInfo(hosting, args, jar);
+                var psi = CreateProcessStartInfo(hosting, args, jar, heapOverride);
 
                 using var proc = runner.Start(psi);
                 using var killReg = cancelToken.Register(() =>
@@ -427,7 +433,8 @@ internal static class RunCommand
         return argList;
     }
 
-    internal static ProcessStartInfo CreateProcessStartInfo(HostingOptions hosting, SyntheaArgs args, FileInfo jar)
+    internal static ProcessStartInfo CreateProcessStartInfo(
+        HostingOptions hosting, SyntheaArgs args, FileInfo jar, string? heapOverride = null)
     {
         var psi = new ProcessStartInfo(hosting.JavaPath)
         {
@@ -436,6 +443,13 @@ internal static class RunCommand
             RedirectStandardError = true,
             WorkingDirectory = hosting.Output.FullName
         };
+        // C3: JVM args must precede `-jar`. If the user supplied --java-heap
+        // we honor it; otherwise we let JavaHeapSizer pick a tier based on
+        // --population. Sub-1000 populations get no heap arg so the JVM
+        // default applies.
+        var heap = JavaHeapSizer.Resolve(heapOverride, args.Population);
+        if (!string.IsNullOrWhiteSpace(heap))
+            psi.ArgumentList.Add(heap);
         psi.ArgumentList.Add("-jar");
         psi.ArgumentList.Add(jar.FullName);
         foreach (var a in BuildArgumentList(args))
@@ -443,7 +457,7 @@ internal static class RunCommand
         return psi;
     }
 
-    private static int PrintInvocation(HostingOptions hosting, SyntheaArgs args, IJarSource jarSource)
+    private static int PrintInvocation(HostingOptions hosting, SyntheaArgs args, IJarSource jarSource, string? heapOverride)
     {
         var cachedJar = jarSource.TryFindCachedJar();
         var jarLabel = cachedJar?.FullName
@@ -452,6 +466,12 @@ internal static class RunCommand
         Console.WriteLine($"# Synthea JAR:     {jarLabel}");
         Console.WriteLine($"# Working dir:     {hosting.Output.FullName}");
         Console.Write(QuoteForShell(hosting.JavaPath));
+        var heap = JavaHeapSizer.Resolve(heapOverride, args.Population);
+        if (!string.IsNullOrWhiteSpace(heap))
+        {
+            Console.Write(' ');
+            Console.Write(QuoteForShell(heap));
+        }
         Console.Write(" -jar ");
         Console.Write(QuoteForShell(jarLabel));
         foreach (var a in BuildArgumentList(args))
@@ -917,4 +937,20 @@ internal static class RunCommand
                                   System.Globalization.DateTimeStyles.None, out _)
             ? null
             : $"Date must be ISO YYYY-MM-DD (got '{v}').";
+
+    // C3: --java-heap <size> — overrides the population-based heap tier.
+    // The value is the raw -Xmx payload (e.g. "4g", "1024m"); we accept
+    // shapes that match `\d+[gGmM]` and prefix `-Xmx` in JavaHeapSizer
+    // before handing off to the JVM.
+    private static Option<string?> CreateJavaHeapOption()
+    {
+        var opt = new Option<string?>("--java-heap")
+        {
+            Description = "Override the auto-sized JVM heap (e.g. '4g' or '1024m'). " +
+                          "Defaults: 2g for >=1k, 4g for >=10k, 8g for >=100k, 16g for >=1M; " +
+                          "no flag for <1k (use JVM default)."
+        };
+        opt.Validators.Add(SingleTokenValidator(JavaHeapSizer.ValidateOverride));
+        return opt;
+    }
 }
