@@ -3,6 +3,9 @@ namespace Synthea.Cli;
 // Everything that maps to flags or positional values Synthea itself
 // consumes. BuildArgumentList depends only on this; nothing about
 // hosting (java path, output dir, refresh) belongs here.
+//
+// New fields go at the end with defaults so existing positional-arg
+// callers in tests don't all need updating each phase.
 internal record SyntheaArgs(
     string? State,
     string? City,
@@ -20,4 +23,13 @@ internal record SyntheaArgs(
     int? DaysForward,
     string[] Formats,
     string[] AdditionalFormats,
-    string[] Passthru);
+    string[] Passthru,
+    // Phase 5 (A1+A2+A3): reproducibility flags accept ISO YYYY-MM-DD;
+    // BuildArgumentList converts to Synthea's YYYYMMDD form. -E permits
+    // EndDate beyond today; -o true enables overflow generation.
+    string? ReferenceDate = null,
+    string? EndDate = null,
+    bool AllowFutureEnd = false,
+    int? ClinicianSeed = null,
+    int? SinglePersonSeed = null,
+    bool Overflow = false);
