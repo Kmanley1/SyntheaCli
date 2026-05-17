@@ -96,6 +96,11 @@ internal static class RunCommand
             Description = "Emit FHIR resources as bulk-data NDJSON (--exporter.fhir.bulk_data=true)."
         };
         var javaHeapOpt = CreateJavaHeapOption();                 // C3
+        var progressOpt = new Option<bool>("--progress")          // D2
+        {
+            Description = "Print a periodic 'Generated X/Y patients (Z%)…' status line to stderr " +
+                          "while Synthea runs. Off by default; opt in for long runs."
+        };
         var passthru = CreatePassthruArgument();
 
         runCmd.Options.Add(outputOpt);
@@ -130,6 +135,7 @@ internal static class RunCommand
         runCmd.Options.Add(igDirOpt);
         runCmd.Options.Add(bulkDataOpt);
         runCmd.Options.Add(javaHeapOpt);
+        runCmd.Options.Add(progressOpt);
         runCmd.Arguments.Add(passthru);
 
         runCmd.TreatUnmatchedTokensAsErrors = false;
@@ -147,6 +153,9 @@ internal static class RunCommand
             // sees or anything the test fixtures need to know about.
             var heapOverride = parseResult.GetValue(javaHeapOpt);
             var printArgs = parseResult.GetValue(printArgsOpt);
+            // D2: --progress is presentation-only and never reaches Synthea,
+            // so it sits next to heapOverride rather than in SyntheaArgs.
+            var progressEnabled = parseResult.GetValue(progressOpt);
 
             // C7: malformed ~/.synthea-cli/config.json must fail the run with
             // a clean exit 1 (not a stack trace, not exit 3 from the JAR
@@ -227,10 +236,25 @@ internal static class RunCommand
                 {
                     try { proc.Kill(entireProcessTree: true); } catch { /* already exited */ }
                 });
+                // D2: when --progress is on, feed each stderr line to the
+                // parser and let a 5-second timer emit periodic status. The
+                // timer is owned by this scope so it stops as soon as the
+                // pump finishes; no leak if Synthea crashes early.
+                SyntheaProgressParser? parser = progressEnabled ? new SyntheaProgressParser() : null;
+                Action<string>? onErrLine = parser is null ? null : (string line) => parser.TryConsume(line);
+                var totalPatients = args.Population;
+                using var progressTimer = progressEnabled
+                    ? new Timer(_ => EmitProgress(parser!, totalPatients),
+                                state: null, dueTime: TimeSpan.FromSeconds(5),
+                                period: TimeSpan.FromSeconds(5))
+                    : null;
                 var pumpOut = Task.Run(() => ProcessHelpers.Relay(proc.StandardOutput, Console.Out));
-                var pumpErr = Task.Run(() => ProcessHelpers.RelayAndCapture(proc.StandardError, Console.Error));
+                var pumpErr = Task.Run(() => ProcessHelpers.RelayAndCapture(
+                    proc.StandardError, Console.Error, onLine: onErrLine));
 
                 await Task.WhenAll(pumpOut, pumpErr, proc.WaitForExitAsync());
+                progressTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+                if (parser is not null) EmitProgress(parser, totalPatients);
                 var exitCode = proc.ExitCode;
                 if (exitCode != 0)
                 {
@@ -510,6 +534,25 @@ internal static class RunCommand
         }
         Console.WriteLine();
         return 0;
+    }
+
+    // D2: render a single "Generated X[/Y] (Z%) …" line. Stays on stderr
+    // so it doesn't contaminate stdout for callers piping Synthea's
+    // generated artifacts. We render nothing until the parser sees at
+    // least one patient, so an early-failed run doesn't print "0/...".
+    internal static void EmitProgress(SyntheaProgressParser parser, int? totalPatients)
+    {
+        var count = parser.LastCount;
+        if (count <= 0) return;
+        if (totalPatients is int total && total > 0)
+        {
+            var pct = (int)Math.Min(100, Math.Round(100.0 * count / total));
+            Console.Error.WriteLine($"Generated {count}/{total} patients ({pct}%)…");
+        }
+        else
+        {
+            Console.Error.WriteLine($"Generated {count} patients…");
+        }
     }
 
     private static string QuoteForShell(string s)

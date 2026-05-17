@@ -52,14 +52,20 @@ internal static class ProcessHelpers
     // so the caller can inspect tail-of-stderr for a remediation match after
     // the process exits non-zero. Buffer is bounded to avoid pinning a
     // long-running Synthea run's full stderr in memory. (C6)
+    //
+    // D2: the optional `onLine` callback fires synchronously for each
+    // line, before the line hits `dest`. Callers use it to feed the
+    // progress parser; keeping it synchronous keeps ordering predictable
+    // without forcing a queue or async fence.
     internal static async Task<IReadOnlyList<string>> RelayAndCapture(
-        StreamReader src, TextWriter dest, int capacity = 50)
+        StreamReader src, TextWriter dest, int capacity = 50, Action<string>? onLine = null)
     {
         if (capacity <= 0) throw new ArgumentOutOfRangeException(nameof(capacity));
         var ring = new List<string>(capacity);
         string? line;
         while ((line = await src.ReadLineAsync()) is not null)
         {
+            onLine?.Invoke(line);
             dest.WriteLine(line);
             if (ring.Count >= capacity) ring.RemoveAt(0);
             ring.Add(line);
