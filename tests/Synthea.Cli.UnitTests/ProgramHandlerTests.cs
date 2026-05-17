@@ -704,6 +704,65 @@ public class ProgramHandlerTests : IDisposable
         Assert.Contains("--exporter.fhir.bulk_data=true", _runner.StartInfo!.ArgumentList);
     }
 
+    // D1: --version shows a two-line report including the JAR cache info.
+    [Fact]
+    public void BuildVersionReport_NoCachedJar_SaysNotYetCached()
+    {
+        var report = Program.BuildVersionReport(new NoJarStub());
+        Assert.Contains("synthea-cli", report);
+        Assert.Contains("not yet cached", report);
+    }
+
+    [Fact]
+    public void BuildVersionReport_WithCachedJar_IncludesCachedDate()
+    {
+        var report = Program.BuildVersionReport(new StubJarSource(_jar));
+        Assert.Contains("synthea-cli", report);
+        Assert.Contains("synthea-jar", report);
+        Assert.Contains("cached ", report);
+    }
+
+    [Fact]
+    public async Task VersionFlag_ShortCircuitsBeforeFrameworkHandler()
+    {
+        var code = await Run("--version");
+        Assert.Equal(0, code);
+        // The run handler should not have been entered.
+        Assert.Null(_runner.StartInfo);
+    }
+
+    // D8: --dry-run is the canonical alias for --print-args.
+    [Fact]
+    public async Task DryRun_Alias_BehavesLikePrintArgs()
+    {
+        var outDir = Path.Combine(_tempDir, "out-dry-run");
+        var code = await Run("run", "--output", outDir, "--state", "OH", "--dry-run");
+        Assert.Equal(0, code);
+        Assert.Null(_runner.StartInfo); // never spawned a process
+    }
+
+    [Fact]
+    public async Task PrintArgs_LegacyAlias_StillWorks()
+    {
+        var outDir = Path.Combine(_tempDir, "out-print-args");
+        var code = await Run("run", "--output", outDir, "--state", "OH", "--print-args");
+        Assert.Equal(0, code);
+        Assert.Null(_runner.StartInfo);
+    }
+
+    // A bare IJarSource that always reports no cached JAR.
+    private sealed class NoJarStub : IJarSource
+    {
+        public string CachePath => Path.GetTempPath();
+        public FileInfo? TryFindCachedJar() => null;
+        public Task<FileInfo> EnsureJarAsync(
+            bool forceRefresh = false,
+            IProgress<(long downloaded, long total)>? prog = null,
+            CancellationToken token = default,
+            JarOverrides? overrides = null)
+            => throw new InvalidOperationException("no jar in this test");
+    }
+
     [Fact]
     public async Task JavaProcess_NonZeroExit_WithRecognizedStderr_StillReturnsJavasExitCode()
     {
