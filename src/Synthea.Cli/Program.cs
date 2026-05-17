@@ -127,6 +127,7 @@ internal static class Program
         root.Subcommands.Add(RunCommand.Build(runner, jarSource, javaDetector, refreshOpt, javaOpt, skipJdkCheckOpt));
         root.Subcommands.Add(CacheCommand.Build(jarSource));
         root.Subcommands.Add(DoctorCommand.Build(jarSource, javaDetector, fileSystem, gitHubProbe, diskProbe, javaOpt));
+        root.Subcommands.Add(ModulesCommand.Build(jarSource));
 
         if (args.Length == 0) args = new[] { "--help" };
         return await root.Parse(args).InvokeAsync();

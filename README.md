@@ -163,6 +163,18 @@ synthea doctor
 # `--jar` lets you bypass GitHub entirely if the reachability probe is unhappy.
 ```
 
+### Browse Synthea modules
+
+```bash
+# List every module bundled in the cached JAR (and optionally a --module-dir).
+synthea modules list
+synthea modules list --module-dir ./my-custom-modules
+
+# Show a module's GMF version, remarks, and state count.
+synthea modules describe asthma
+synthea modules describe modules/medications/inhaler.json
+```
+
 ---
 
 ## Cache management
