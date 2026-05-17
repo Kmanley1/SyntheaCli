@@ -600,6 +600,51 @@ public class ProgramHandlerTests : IDisposable
         Assert.Null(_runner.StartInfo);
     }
 
+    // A9+A10 (Phase 7): US Core version + FHIR R5.
+
+    [Theory]
+    [InlineData("3.1.1")]
+    [InlineData("4")]
+    [InlineData("5")]
+    [InlineData("6")]
+    [InlineData("7")]
+    public async Task UsCoreVersion_Allowed_EmitsBothProperties(string ver)
+    {
+        var outDir = Path.Combine(_tempDir, "out-uscore-" + ver);
+        var code = await Run("run", "--output", outDir, "--us-core-version", ver);
+        Assert.Equal(0, code);
+        var list = _runner.StartInfo!.ArgumentList;
+        Assert.Contains("--exporter.fhir.use_us_core_ig=true", list);
+        Assert.Contains($"--exporter.fhir.us_core_version={ver}", list);
+    }
+
+    [Fact]
+    public async Task UsCoreVersion_OutsideAllowlist_Rejected()
+    {
+        var outDir = Path.Combine(_tempDir, "out-uscore-bad");
+        var code = await Run("run", "--output", outDir, "--us-core-version", "99");
+        Assert.NotEqual(0, code);
+        Assert.Null(_runner.StartInfo);
+    }
+
+    [Fact]
+    public async Task FhirVersion_R5_Accepted()
+    {
+        var outDir = Path.Combine(_tempDir, "out-fhir-r5");
+        var code = await Run("run", "--output", outDir, "--fhir-version", "R5");
+        Assert.Equal(0, code);
+        Assert.Contains("--exporter.fhir.version=R5", _runner.StartInfo!.ArgumentList);
+    }
+
+    [Fact]
+    public async Task FhirVersion_Bogus_Rejected()
+    {
+        var outDir = Path.Combine(_tempDir, "out-fhir-bad");
+        var code = await Run("run", "--output", outDir, "--fhir-version", "R6");
+        Assert.NotEqual(0, code);
+        Assert.Null(_runner.StartInfo);
+    }
+
     [Fact]
     public async Task JavaProcess_NonZeroExit_WithRecognizedStderr_StillReturnsJavasExitCode()
     {
