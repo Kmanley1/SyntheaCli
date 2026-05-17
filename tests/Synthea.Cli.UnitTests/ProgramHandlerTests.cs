@@ -463,6 +463,116 @@ public class ProgramHandlerTests : IDisposable
         Assert.Equal(137, code);
     }
 
+    // A1+A2+A3 (Phase 5): reproducibility + overflow flag parsing.
+
+    [Fact]
+    public async Task ReferenceDate_Iso_ConvertedToYyyymmdd()
+    {
+        var outDir = Path.Combine(_tempDir, "out-refdate");
+        var code = await Run("run", "--output", outDir, "--reference-date", "2024-03-15");
+        Assert.Equal(0, code);
+        var list = _runner.StartInfo!.ArgumentList;
+        Assert.Contains("-r", list);
+        Assert.Contains("20240315", list);
+    }
+
+    [Fact]
+    public async Task ReferenceDate_BadFormat_RejectedByValidator()
+    {
+        var outDir = Path.Combine(_tempDir, "out-refdate-bad");
+        var code = await Run("run", "--output", outDir, "--reference-date", "03/15/2024");
+        Assert.NotEqual(0, code);
+        Assert.Null(_runner.StartInfo);
+    }
+
+    [Fact]
+    public async Task EndDate_Iso_ConvertedToYyyymmdd()
+    {
+        var outDir = Path.Combine(_tempDir, "out-enddate");
+        var code = await Run("run", "--output", outDir, "--end-date", "2030-12-31");
+        Assert.Equal(0, code);
+        var list = _runner.StartInfo!.ArgumentList;
+        Assert.Contains("-e", list);
+        Assert.Contains("20301231", list);
+    }
+
+    [Fact]
+    public async Task AllowFutureEnd_EmitsDashE()
+    {
+        var outDir = Path.Combine(_tempDir, "out-future-end");
+        var code = await Run("run", "--output", outDir, "--allow-future-end");
+        Assert.Equal(0, code);
+        Assert.Contains("-E", _runner.StartInfo!.ArgumentList);
+    }
+
+    [Fact]
+    public async Task ClinicianSeed_EmitsDashCs()
+    {
+        var outDir = Path.Combine(_tempDir, "out-cs");
+        var code = await Run("run", "--output", outDir, "--clinician-seed", "42");
+        Assert.Equal(0, code);
+        var list = _runner.StartInfo!.ArgumentList;
+        Assert.Contains("-cs", list);
+        Assert.Contains("42", list);
+    }
+
+    [Fact]
+    public async Task SinglePersonSeed_EmitsDashPs()
+    {
+        var outDir = Path.Combine(_tempDir, "out-ps");
+        var code = await Run("run", "--output", outDir, "--single-person-seed", "7");
+        Assert.Equal(0, code);
+        var list = _runner.StartInfo!.ArgumentList;
+        Assert.Contains("-ps", list);
+        Assert.Contains("7", list);
+    }
+
+    [Fact]
+    public async Task ClinicianSeed_NonInteger_Rejected()
+    {
+        var outDir = Path.Combine(_tempDir, "out-cs-bad");
+        var code = await Run("run", "--output", outDir, "--clinician-seed", "oops");
+        Assert.NotEqual(0, code);
+        Assert.Null(_runner.StartInfo);
+    }
+
+    [Fact]
+    public async Task Overflow_EmitsDashOTrue()
+    {
+        var outDir = Path.Combine(_tempDir, "out-overflow");
+        var code = await Run("run", "--output", outDir, "--overflow");
+        Assert.Equal(0, code);
+        var list = _runner.StartInfo!.ArgumentList;
+        // -o true comes BEFORE any positional state/city/zip in BuildArgumentList.
+        var oIdx = list.IndexOf("-o");
+        Assert.True(oIdx >= 0, "expected -o in arg list");
+        Assert.Equal("true", list[oIdx + 1]);
+    }
+
+    [Fact]
+    public async Task AllReproFlags_AppearTogether()
+    {
+        var outDir = Path.Combine(_tempDir, "out-all-repro");
+        var code = await Run(
+            "run", "--output", outDir,
+            "--reference-date", "2024-01-01",
+            "--end-date", "2024-12-31",
+            "--allow-future-end",
+            "--clinician-seed", "1",
+            "--single-person-seed", "2",
+            "--overflow");
+        Assert.Equal(0, code);
+        var list = _runner.StartInfo!.ArgumentList;
+        Assert.Contains("-r", list);
+        Assert.Contains("20240101", list);
+        Assert.Contains("-e", list);
+        Assert.Contains("20241231", list);
+        Assert.Contains("-E", list);
+        Assert.Contains("-cs", list);
+        Assert.Contains("-ps", list);
+        Assert.Contains("-o", list);
+    }
+
     [Theory]
     [InlineData("Atlantis")]         // far miss — no suggestion
     [InlineData("Yukon")]            // far miss

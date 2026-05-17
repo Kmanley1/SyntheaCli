@@ -60,6 +60,19 @@ internal static class RunCommand
         {
             Description = "Fail the run if the upstream release does not publish a .sha256 asset."
         };
+        var referenceDateOpt = CreateReferenceDateOption();   // A1
+        var endDateOpt = CreateEndDateOption();               // A1
+        var allowFutureEndOpt = new Option<bool>("--allow-future-end")
+        {
+            Description = "Permit --end-date beyond today (Synthea -E)."
+        };
+        var clinicianSeedOpt = CreateClinicianSeedOption();   // A1
+        var singlePersonSeedOpt = CreateSinglePersonSeedOption(); // A1
+        var overflowOpt = new Option<bool>("--overflow")
+        {
+            Description = "Allow Synthea's overflow generation (-o true). " +
+                          "Off by default; turn on for full-fidelity reruns of past results."
+        };
         var passthru = CreatePassthruArgument();
 
         runCmd.Options.Add(outputOpt);
@@ -82,6 +95,12 @@ internal static class RunCommand
         runCmd.Options.Add(printArgsOpt);
         runCmd.Options.Add(jarOpt);
         runCmd.Options.Add(insistChecksumOpt);
+        runCmd.Options.Add(referenceDateOpt);
+        runCmd.Options.Add(endDateOpt);
+        runCmd.Options.Add(allowFutureEndOpt);
+        runCmd.Options.Add(clinicianSeedOpt);
+        runCmd.Options.Add(singlePersonSeedOpt);
+        runCmd.Options.Add(overflowOpt);
         runCmd.Arguments.Add(passthru);
 
         runCmd.TreatUnmatchedTokensAsErrors = false;
@@ -91,7 +110,8 @@ internal static class RunCommand
             var (hosting, args) = ParseRunOptions(parseResult, refreshOpt, javaOpt, outputOpt, stateOpt, cityOpt,
                 genderOpt, ageOpt, moduleDirOpt, moduleOpt, popOpt, seedOpt, configOpt, zipOpt,
                 fhirVerOpt, initialSnapOpt, updatedSnapOpt, daysForwardOpt, formatOpt, addFormatOpt,
-                jarOpt, insistChecksumOpt, passthru);
+                jarOpt, insistChecksumOpt, passthru,
+                referenceDateOpt, endDateOpt, allowFutureEndOpt, clinicianSeedOpt, singlePersonSeedOpt, overflowOpt);
             var printArgs = parseResult.GetValue(printArgsOpt);
 
             // C7: malformed ~/.synthea-cli/config.json must fail the run with
@@ -277,6 +297,38 @@ internal static class RunCommand
             argList.Add("-t");
             argList.Add(o.DaysForward.Value.ToString());
         }
+        // A1: reproducibility flags. Convert ISO YYYY-MM-DD → YYYYMMDD,
+        // which is the form Synthea's date parser expects.
+        if (!string.IsNullOrWhiteSpace(o.ReferenceDate))
+        {
+            argList.Add("-r");
+            argList.Add(o.ReferenceDate!.Replace("-", string.Empty));
+        }
+        if (!string.IsNullOrWhiteSpace(o.EndDate))
+        {
+            argList.Add("-e");
+            argList.Add(o.EndDate!.Replace("-", string.Empty));
+        }
+        if (o.AllowFutureEnd)
+        {
+            argList.Add("-E");
+        }
+        if (o.ClinicianSeed.HasValue)
+        {
+            argList.Add("-cs");
+            argList.Add(o.ClinicianSeed.Value.ToString());
+        }
+        if (o.SinglePersonSeed.HasValue)
+        {
+            argList.Add("-ps");
+            argList.Add(o.SinglePersonSeed.Value.ToString());
+        }
+        // A2/A3: overflow. Synthea -o true vs false; off by default.
+        if (o.Overflow)
+        {
+            argList.Add("-o");
+            argList.Add("true");
+        }
         if (!string.IsNullOrWhiteSpace(o.FhirVersion))
         {
             argList.Add("--exporter.fhir.version=" + o.FhirVersion!.ToUpperInvariant());
@@ -386,7 +438,13 @@ internal static class RunCommand
         Option<string[]> addFormatOpt,
         Option<string?> jarOpt,
         Option<bool> insistChecksumOpt,
-        Argument<string[]> passthru)
+        Argument<string[]> passthru,
+        Option<string?> referenceDateOpt,
+        Option<string?> endDateOpt,
+        Option<bool> allowFutureEndOpt,
+        Option<int?> clinicianSeedOpt,
+        Option<int?> singlePersonSeedOpt,
+        Option<bool> overflowOpt)
     {
         var javaPathArg = parseResult.GetValue(javaOpt);
         var hosting = new HostingOptions(
@@ -412,7 +470,13 @@ internal static class RunCommand
             DaysForward: parseResult.GetValue(daysOpt),
             Formats: parseResult.GetValue(formatOpt) ?? Array.Empty<string>(),
             AdditionalFormats: parseResult.GetValue(addFormatOpt) ?? Array.Empty<string>(),
-            Passthru: parseResult.GetValue(passthru) ?? Array.Empty<string>());
+            Passthru: parseResult.GetValue(passthru) ?? Array.Empty<string>(),
+            ReferenceDate: parseResult.GetValue(referenceDateOpt),
+            EndDate: parseResult.GetValue(endDateOpt),
+            AllowFutureEnd: parseResult.GetValue(allowFutureEndOpt),
+            ClinicianSeed: parseResult.GetValue(clinicianSeedOpt),
+            SinglePersonSeed: parseResult.GetValue(singlePersonSeedOpt),
+            Overflow: parseResult.GetValue(overflowOpt));
         return (hosting, args);
     }
 
@@ -652,4 +716,59 @@ internal static class RunCommand
         Arity = ArgumentArity.ZeroOrMore,
         Description = "Any other arguments forwarded unchanged to synthea.jar"
     };
+
+    // A1: reproducibility window — accepts ISO YYYY-MM-DD; emitted to
+    // Synthea as YYYYMMDD (its accepted form) by BuildArgumentList.
+    private static Option<string?> CreateReferenceDateOption()
+    {
+        var opt = new Option<string?>("--reference-date")
+        {
+            Description = "Reference date (ISO YYYY-MM-DD). Maps to Synthea -r YYYYMMDD."
+        };
+        opt.Validators.Add(SingleTokenValidator(ValidateIsoDate));
+        return opt;
+    }
+
+    private static Option<string?> CreateEndDateOption()
+    {
+        var opt = new Option<string?>("--end-date")
+        {
+            Description = "Simulation end date (ISO YYYY-MM-DD). Maps to Synthea -e YYYYMMDD. " +
+                          "Requires --allow-future-end if the date is beyond today."
+        };
+        opt.Validators.Add(SingleTokenValidator(ValidateIsoDate));
+        return opt;
+    }
+
+    private static Option<int?> CreateClinicianSeedOption()
+    {
+        var opt = new Option<int?>("--clinician-seed")
+        {
+            Description = "Random seed for clinician generation (Synthea -cs N)."
+        };
+        opt.Validators.Add(SingleTokenValidator(v =>
+            int.TryParse(v, out _) ? null : "Clinician seed must be an integer."));
+        return opt;
+    }
+
+    private static Option<int?> CreateSinglePersonSeedOption()
+    {
+        var opt = new Option<int?>("--single-person-seed")
+        {
+            Description = "Random seed for single-person generation (Synthea -ps N)."
+        };
+        opt.Validators.Add(SingleTokenValidator(v =>
+            int.TryParse(v, out _) ? null : "Single-person seed must be an integer."));
+        return opt;
+    }
+
+    // ISO-8601 calendar date (YYYY-MM-DD), strict. Bare-yyyy / yyyy-mm
+    // shortcuts not accepted — Synthea wants full date precision and we
+    // don't want to silently coerce.
+    private static string? ValidateIsoDate(string v)
+        => DateTime.TryParseExact(v, "yyyy-MM-dd",
+                                  System.Globalization.CultureInfo.InvariantCulture,
+                                  System.Globalization.DateTimeStyles.None, out _)
+            ? null
+            : $"Date must be ISO YYYY-MM-DD (got '{v}').";
 }
