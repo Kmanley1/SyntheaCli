@@ -463,6 +463,33 @@ public class ProgramHandlerTests : IDisposable
         Assert.Equal(137, code);
     }
 
+    [Theory]
+    [InlineData("Atlantis")]         // far miss — no suggestion
+    [InlineData("Yukon")]            // far miss
+    [InlineData("Mass")]             // length 4 but not a code (not 2-letter); too short to be a state
+    public async Task State_UnknownFullName_ReturnsError(string badState)
+    {
+        // (C1) The validator must now reject full names outside the known
+        // 56-state set, not pass them through to Synthea.
+        var outDir = Path.Combine(_tempDir, Path.GetRandomFileName());
+        var code = await Run("run", "--output", outDir, "--state", badState);
+        Assert.NotEqual(0, code);
+        Assert.Null(_runner.StartInfo);
+    }
+
+    [Fact]
+    public async Task State_NearMiss_ReturnsErrorWithSuggestion()
+    {
+        // (C1) A single-edit miss should be rejected — and ideally the
+        // error message contains the suggested correct name. We can't
+        // easily inspect stderr here without redirecting it process-wide;
+        // the exit code is the contract.
+        var outDir = Path.Combine(_tempDir, Path.GetRandomFileName());
+        var code = await Run("run", "--output", outDir, "--state", "Massachsetts");
+        Assert.NotEqual(0, code);
+        Assert.Null(_runner.StartInfo);
+    }
+
     [Fact]
     public async Task JavaProcess_NonZeroExit_WithRecognizedStderr_StillReturnsJavasExitCode()
     {

@@ -464,14 +464,16 @@ internal static class RunCommand
     private static Option<string?> CreateStateOption()
     {
         // Accept either a 2-letter USPS code (e.g. "OH") or a full state
-        // name (e.g. "Ohio", "New Hampshire"). 2-letter codes are
-        // converted to the full name in ParseRunOptions before passthru,
-        // because Synthea's geography data is keyed by full name and
-        // rejects bare 2-letter codes with "Unable to select a random
-        // city id."
+        // name (e.g. "Ohio", "New Hampshire"). 2-letter codes are converted
+        // to the full name in ParseRunOptions before passthru, because
+        // Synthea's geography data is keyed by full name and rejects bare
+        // 2-letter codes. (C1) The validator now also rejects full names
+        // outside the known 56-state set, with a "did you mean ...?" hint
+        // for likely misspellings — failing fast in the CLI is cheaper than
+        // letting Synthea blow up with an opaque stack trace minutes later.
         var opt = new Option<string?>("--state")
         {
-            Description = "State name (e.g. 'Ohio') or two-letter USPS code (e.g. 'OH'). 2-letter codes are converted to the full name automatically. Synthea owns the place-existence check."
+            Description = "State name (e.g. 'Ohio') or two-letter USPS code (e.g. 'OH'). 2-letter codes are converted to the full name automatically. Rejects unknown names with a suggestion."
         };
         opt.Validators.Add(SingleTokenValidator(v =>
         {
@@ -481,7 +483,12 @@ internal static class RunCommand
                     ? null
                     : $"Unknown 2-letter state code '{v.ToUpperInvariant()}'. Use a USPS code (e.g. OH, TX, DC) or the full name (e.g. Ohio).";
             }
-            return v.Length >= 3 ? null : "State must be a 2-letter USPS code or the full state name.";
+            if (v.Length < 3) return "State must be a 2-letter USPS code or the full state name.";
+            if (UsStates.IsKnownFullName(v)) return null;
+            var suggestion = UsStates.SuggestClosest(v);
+            return suggestion is not null
+                ? $"Unknown state '{v}'. Did you mean '{suggestion}'?"
+                : $"Unknown state '{v}'. Use a 2-letter USPS code (e.g. OH) or full state name (e.g. Ohio).";
         }));
         return opt;
     }

@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Synthea.Cli;
 
@@ -83,6 +85,66 @@ internal static class UsStates
     /// </summary>
     public static bool IsKnownCode(string input)
         => input.Length == 2 && CodeToName.ContainsKey(input.ToUpperInvariant());
+
+    /// <summary>
+    /// Full state/territory names Synthea recognizes (case-insensitive set).
+    /// Built from <see cref="CodeToName"/> values, so the two stay in sync
+    /// without manual maintenance. (C1)
+    /// </summary>
+    public static readonly IReadOnlySet<string> KnownFullNames =
+        new HashSet<string>(CodeToName.Values, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// True if <paramref name="input"/> matches a known full state/territory
+    /// name (case insensitive). (C1)
+    /// </summary>
+    public static bool IsKnownFullName(string input) => KnownFullNames.Contains(input);
+
+    /// <summary>
+    /// Returns the closest known state name to <paramref name="input"/>, or
+    /// null if nothing is close enough. Used to power a "did you mean ...?"
+    /// hint for misspellings. Threshold scales with input length so short
+    /// names ("Ohio", "Iowa") need a tighter match than long ones
+    /// ("Massachusetts"). (C1)
+    /// </summary>
+    public static string? SuggestClosest(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return null;
+        // 1-edit per ~4 characters, minimum 1; so "Maine"→"Maime" (1 edit, len 5) hits,
+        // and "Atlantis" (8 chars, no close match) stays null.
+        var threshold = Math.Max(1, input.Length / 4);
+        var (best, dist) = KnownFullNames
+            .Select(n => (Name: n, Dist: LevenshteinIgnoreCase(input, n)))
+            .OrderBy(t => t.Dist)
+            .First();
+        return dist <= threshold ? best : null;
+    }
+
+    private static int LevenshteinIgnoreCase(string a, string b)
+    {
+        var lowerA = a.ToLowerInvariant();
+        var lowerB = b.ToLowerInvariant();
+        var n = lowerA.Length;
+        var m = lowerB.Length;
+        if (n == 0) return m;
+        if (m == 0) return n;
+
+        var prev = new int[m + 1];
+        var curr = new int[m + 1];
+        for (var j = 0; j <= m; j++) prev[j] = j;
+
+        for (var i = 1; i <= n; i++)
+        {
+            curr[0] = i;
+            for (var j = 1; j <= m; j++)
+            {
+                var cost = lowerA[i - 1] == lowerB[j - 1] ? 0 : 1;
+                curr[j] = Math.Min(Math.Min(curr[j - 1] + 1, prev[j] + 1), prev[j - 1] + cost);
+            }
+            (prev, curr) = (curr, prev);
+        }
+        return prev[m];
+    }
 
     /// <summary>
     /// Converts user-supplied state input to the form Synthea expects.
