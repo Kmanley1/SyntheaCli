@@ -17,7 +17,7 @@ flowchart LR
     User([User / CI])
     SyntheaCli[Synthea.Cli<br/>.NET 8 global tool]
     GitHub[(GitHub Releases<br/>synthetichealth/synthea)]
-    Java[Java JRE 11+]
+    Java[Java JRE 17+]
     Output[(Local filesystem<br/>output directory)]
 
     User -->|run / cache list / cache clear| SyntheaCli
@@ -48,7 +48,7 @@ flowchart TB
         Cache[(JAR cache<br/>%LOCALAPPDATA%\Synthea.Cli<br/>~/.local/share/Synthea.Cli)]
         Config[(~/.synthea-cli/config.json)]
         Out[(./output/...)]
-        Java[Java JRE 11+]
+        Java[Java JRE 17+]
     end
     GitHub[(GitHub Releases API)]
 
@@ -63,7 +63,7 @@ flowchart TB
 |-----------|-----|
 | `synthea` CLI process | The tool itself; short-lived, one invocation per run |
 | JAR cache directory | Avoids re-downloading on every run; survives across invocations |
-| Java JRE | Hosts the actual Synthea simulation; user-provided |
+| Java JRE | Hosts the actual Synthea simulation; user-provided. Synthea v4.0 requires Java 17 or newer. |
 | Config file | Persistent settings (token, proxy, default JAR path) |
 | Output directory | User-controlled; the tool only ensures it exists |
 

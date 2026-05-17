@@ -25,7 +25,9 @@ public class ProgramRefactorTests
     {
         var refreshOpt = new Option<bool>("--refresh");
         var javaOpt = new Option<string?>("--java-path");
-        var run = RunCommand.Build(new NoopRunner(), new NoopJarSource(), refreshOpt, javaOpt);
+        var skipJdkOpt = new Option<bool>("--skip-jdk-check");
+        var run = RunCommand.Build(new NoopRunner(), new NoopJarSource(), new StubDetector(),
+            refreshOpt, javaOpt, skipJdkOpt);
 
         var stateOpt = run.Options.Single(o => o.Name == "--state");
         Assert.NotEmpty(stateOpt.Validators);
@@ -223,6 +225,12 @@ public class ProgramRefactorTests
     private sealed class NoopRunner : IProcessRunner
     {
         public IProcess Start(ProcessStartInfo psi) => throw new NotSupportedException();
+    }
+
+    private sealed class StubDetector : IJavaDetector
+    {
+        public Task<JavaProbeResult> ProbeAsync(string javaPath, CancellationToken cancelToken = default)
+            => Task.FromResult(new JavaProbeResult(true, 21, "21.0.5", null));
     }
 
     private sealed class NoopJarSource : IJarSource

@@ -14,6 +14,7 @@ public class ProgramHandlerTests : IDisposable
     private readonly string _tempDir;
     private readonly FileInfo _jar;
     private readonly CapturingRunner _runner = new();
+    private readonly StubJavaDetector _detector = new();
     private readonly ServiceProvider _services;
 
     public ProgramHandlerTests()
@@ -26,6 +27,7 @@ public class ProgramHandlerTests : IDisposable
         var sc = new ServiceCollection();
         sc.AddSingleton<IProcessRunner>(_runner);
         sc.AddSingleton<IJarSource>(new StubJarSource(_jar));
+        sc.AddSingleton<IJavaDetector>(_detector);
         _services = sc.BuildServiceProvider();
     }
 
@@ -390,5 +392,53 @@ public class ProgramHandlerTests : IDisposable
             CancellationToken token = default,
             JarOverrides? overrides = null)
             => Task.FromResult(_jar);
+    }
+
+    private sealed class StubJavaDetector : IJavaDetector
+    {
+        public JavaProbeResult Result { get; set; } = new(true, 21, "21.0.5", null);
+        public Task<JavaProbeResult> ProbeAsync(string javaPath, CancellationToken cancelToken = default)
+            => Task.FromResult(Result);
+    }
+
+    [Fact]
+    public async Task JdkCheck_TooOldJava_ExitsOneWithoutDownloading()
+    {
+        _detector.Result = new JavaProbeResult(true, 11, "11.0.20", null);
+        var outDir = Path.Combine(_tempDir, "out-jdk-old");
+        var code = await Run("run", "--output", outDir, "--state", "OH");
+        Assert.Equal(1, code);
+        // RunCommand should have rejected before invoking the process runner.
+        Assert.Null(_runner.StartInfo);
+    }
+
+    [Fact]
+    public async Task JdkCheck_JavaMissing_ExitsThreeWithoutDownloading()
+    {
+        _detector.Result = new JavaProbeResult(false, null, null, "not found");
+        var outDir = Path.Combine(_tempDir, "out-jdk-missing");
+        var code = await Run("run", "--output", outDir, "--state", "OH");
+        Assert.Equal(3, code);
+        Assert.Null(_runner.StartInfo);
+    }
+
+    [Fact]
+    public async Task JdkCheck_SkipFlag_BypassesCheckEvenWhenJavaTooOld()
+    {
+        _detector.Result = new JavaProbeResult(true, 8, "1.8.0_201", null);
+        var outDir = Path.Combine(_tempDir, "out-jdk-skip");
+        var code = await Run("run", "--output", outDir, "--state", "OH", "--skip-jdk-check");
+        Assert.Equal(0, code);
+        Assert.NotNull(_runner.StartInfo);
+    }
+
+    [Fact]
+    public async Task JdkCheck_Java17_Passes()
+    {
+        _detector.Result = new JavaProbeResult(true, 17, "17.0.10", null);
+        var outDir = Path.Combine(_tempDir, "out-jdk-17");
+        var code = await Run("run", "--output", outDir, "--state", "OH");
+        Assert.Equal(0, code);
+        Assert.NotNull(_runner.StartInfo);
     }
 }

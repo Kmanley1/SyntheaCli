@@ -25,6 +25,7 @@ public class CacheCommandTests : IDisposable
         var sc = new ServiceCollection();
         sc.AddSingleton<IProcessRunner>(new NoopRunner());
         sc.AddSingleton<IJarSource>(new FixedPathJarSource(_cacheDir));
+        sc.AddSingleton<IJavaDetector>(new StubJavaDetector());
         _services = sc.BuildServiceProvider();
     }
 
@@ -120,5 +121,11 @@ public class CacheCommandTests : IDisposable
     {
         public IProcess Start(System.Diagnostics.ProcessStartInfo psi)
             => throw new NotSupportedException();
+    }
+
+    private sealed class StubJavaDetector : IJavaDetector
+    {
+        public Task<JavaProbeResult> ProbeAsync(string javaPath, CancellationToken cancelToken = default)
+            => Task.FromResult(new JavaProbeResult(true, 21, "21.0.5", null));
     }
 }
