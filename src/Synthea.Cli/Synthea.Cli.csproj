@@ -9,7 +9,7 @@
     <PackageId>synthea-cli</PackageId>
     <ToolCommandName>synthea</ToolCommandName>
     <DotNetCliToolAliases>syn</DotNetCliToolAliases>
-    <PackageVersion>1.0.0</PackageVersion>
+    <PackageVersion>0.5.0</PackageVersion>
     <Description>CLI wrapper around MITRE Synthea synthetic patient generator. Downloads the latest Synthea release, manages a local JAR cache, and exposes Synthea's generation flags as first-class .NET CLI options.</Description>
     <!-- Tags drive NuGet search relevance. Order matters: most-specific
          to most-general so query tokenization favors the right hits. -->
