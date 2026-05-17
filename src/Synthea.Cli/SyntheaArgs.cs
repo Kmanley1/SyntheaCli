@@ -32,4 +32,8 @@ internal record SyntheaArgs(
     bool AllowFutureEnd = false,
     int? ClinicianSeed = null,
     int? SinglePersonSeed = null,
-    bool Overflow = false);
+    bool Overflow = false,
+    // Phase 6 (A6): repeatable --property KEY=VALUE pairs, emitted to
+    // Synthea as `--KEY=VALUE`. Lets callers reach any Synthea property
+    // we haven't surfaced as a first-class flag.
+    string[]? Properties = null);

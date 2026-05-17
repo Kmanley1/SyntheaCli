@@ -177,6 +177,54 @@ public class ProgramRefactorTests
     }
 
     [Fact]
+    public void BuildArgumentList_Properties_EmittedAsDoubleDashFlags()
+    {
+        // (A6) Each --property KEY=VALUE becomes the documented Synthea
+        // form `--KEY=VALUE`. Ordering: must come before positional state.
+        var args = new SyntheaArgs(
+            State: "OH", City: null, Gender: null, AgeRange: null,
+            ModuleDir: null, Modules: null, Population: null, Seed: null,
+            Config: null, Zip: null, FhirVersion: null,
+            InitialSnapshot: null, UpdatedSnapshot: null, DaysForward: null,
+            Formats: System.Array.Empty<string>(),
+            AdditionalFormats: System.Array.Empty<string>(),
+            Passthru: System.Array.Empty<string>(),
+            Properties: new[] { "generate.timestep=86400000", "exporter.json.export=true" });
+
+        var list = RunCommand.BuildArgumentList(args);
+        Assert.Contains("--generate.timestep=86400000", list);
+        Assert.Contains("--exporter.json.export=true", list);
+        var stateIdx = list.IndexOf("OH");
+        var propIdx = list.IndexOf("--generate.timestep=86400000");
+        Assert.True(propIdx < stateIdx,
+            $"properties (idx {propIdx}) should precede positional state (idx {stateIdx})");
+    }
+
+    [Theory]
+    [InlineData("key=value", null)]                          // happy
+    [InlineData("exporter.fhir.export=true", null)]          // dotted key
+    [InlineData("my-key=value", null)]                       // hyphen ok
+    [InlineData("my_key.sub=val", null)]                     // underscore + dot
+    [InlineData("nokey", "must be KEY=VALUE")]
+    [InlineData("=value", "must match")]
+    [InlineData("1bad=value", "must match")]
+    [InlineData("bad key=value", "must match")]
+    [InlineData("key=a=b", "exactly one")]
+    public void ValidateProperty_AppliesRules(string input, string? expectedFragment)
+    {
+        var err = RunCommand.ValidateProperty(input);
+        if (expectedFragment is null)
+        {
+            Assert.Null(err);
+        }
+        else
+        {
+            Assert.NotNull(err);
+            Assert.Contains(expectedFragment, err);
+        }
+    }
+
+    [Fact]
     public void CreateProcessStartInfo_UsesWorkingDirectoryAndJar()
     {
         var tmpDir = Path.Combine(Path.GetTempPath(), "synthea-test-tmp");
