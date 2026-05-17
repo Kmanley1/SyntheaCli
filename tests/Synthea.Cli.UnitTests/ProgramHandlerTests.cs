@@ -364,17 +364,25 @@ public class ProgramHandlerTests : IDisposable
     private class CapturingRunner : IProcessRunner
     {
         public ProcessStartInfo? StartInfo;
+        public int ExitCode { get; set; }
+        public string StderrText { get; set; } = string.Empty;
         public IProcess Start(ProcessStartInfo psi)
         {
             StartInfo = psi;
-            return new StubProcess();
+            return new StubProcess(ExitCode, StderrText);
         }
 
         private class StubProcess : IProcess
         {
+            private readonly int _exitCode;
+            public StubProcess(int exitCode, string stderrText)
+            {
+                _exitCode = exitCode;
+                StandardError = new StreamReader(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(stderrText)));
+            }
             public StreamReader StandardOutput { get; } = new StreamReader(new MemoryStream());
-            public StreamReader StandardError { get; } = new StreamReader(new MemoryStream());
-            public int ExitCode => 0;
+            public StreamReader StandardError { get; }
+            public int ExitCode => _exitCode;
             public Task WaitForExitAsync() => Task.CompletedTask;
             public void Dispose() { }
         }
@@ -440,5 +448,31 @@ public class ProgramHandlerTests : IDisposable
         var code = await Run("run", "--output", outDir, "--state", "OH");
         Assert.Equal(0, code);
         Assert.NotNull(_runner.StartInfo);
+    }
+
+    [Fact]
+    public async Task JavaProcess_NonZeroExit_PropagatesExitCode()
+    {
+        // (C6) When the spawned java process exits non-zero, the CLI must
+        // propagate that exact exit code — not coerce to 0, and not 1 or 3
+        // unless it actually came from java.
+        _runner.ExitCode = 137;
+        _runner.StderrText = "totally unfamiliar error\n";
+        var outDir = Path.Combine(_tempDir, "out-nonzero-exit");
+        var code = await Run("run", "--output", outDir, "--state", "OH");
+        Assert.Equal(137, code);
+    }
+
+    [Fact]
+    public async Task JavaProcess_NonZeroExit_WithRecognizedStderr_StillReturnsJavasExitCode()
+    {
+        // (C6) Hint printing must not change the exit code we return. The
+        // user-visible hint is a stderr decoration; the contract is the exit
+        // code.
+        _runner.ExitCode = 1;
+        _runner.StderrText = "java.lang.RuntimeException: Unable to select a random city id for state Zoo\n";
+        var outDir = Path.Combine(_tempDir, "out-nonzero-hint");
+        var code = await Run("run", "--output", outDir, "--state", "OH");
+        Assert.Equal(1, code);
     }
 }
