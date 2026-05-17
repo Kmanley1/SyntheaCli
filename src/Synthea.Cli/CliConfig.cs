@@ -39,10 +39,36 @@ internal sealed record CliConfig(
         }
         catch (JsonException)
         {
-            // A malformed config file should not be a hard failure for every
-            // run — fall back to defaults and let the user fix it on their
-            // own time. Surfaced to the user via the logger by the caller.
+            // Tolerant variant: callers (e.g. synthea doctor in Phase 9) want
+            // to report on a bad config rather than crash. Run path uses
+            // LoadOrThrow() to fail fast instead. (C7)
             return Empty;
+        }
+    }
+
+    // Strict variant: throws CliConfigException on malformed JSON so the
+    // caller can map it to a clean exit code 1 with a one-line error. Used
+    // by RunCommand to honor C7: malformed config is always an error.
+    public static CliConfig LoadOrThrow(string? path = null)
+    {
+        path ??= DefaultPath();
+        if (!File.Exists(path)) return Empty;
+        string json;
+        try
+        {
+            json = File.ReadAllText(path);
+        }
+        catch (IOException ex)
+        {
+            throw new CliConfigException($"config: {path}: could not read file: {ex.Message}");
+        }
+        try
+        {
+            return JsonSerializer.Deserialize<CliConfig>(json, JsonOpts) ?? Empty;
+        }
+        catch (JsonException ex)
+        {
+            throw new CliConfigException($"config: {path}: {ex.Message}");
         }
     }
 
@@ -86,4 +112,13 @@ internal sealed record CliConfig(
         if (configValue.HasValue) return configValue.Value;
         return @default;
     }
+}
+
+// Thrown by CliConfig.LoadOrThrow when ~/.synthea-cli/config.json is
+// present but malformed. Deliberately does NOT inherit from
+// InvalidOperationException so RunCommand's JarManager catch handler
+// doesn't accidentally classify a config error as a JAR error. (C7)
+internal sealed class CliConfigException : Exception
+{
+    public CliConfigException(string message) : base(message) { }
 }

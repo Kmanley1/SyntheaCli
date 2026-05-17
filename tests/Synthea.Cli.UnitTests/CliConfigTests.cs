@@ -68,6 +68,42 @@ public class CliConfigTests : IDisposable
     }
 
     [Fact]
+    public void LoadOrThrow_MalformedJson_Throws()
+    {
+        var path = Path.Combine(_tempDir, "broken.json");
+        File.WriteAllText(path, "{not valid json");
+        var ex = Assert.Throws<CliConfigException>(() => CliConfig.LoadOrThrow(path));
+        Assert.Contains(path, ex.Message);
+        Assert.StartsWith("config: ", ex.Message);
+    }
+
+    [Fact]
+    public void LoadOrThrow_Valid_ReturnsConfig()
+    {
+        var path = Path.Combine(_tempDir, "config.json");
+        File.WriteAllText(path, """{ "jarPath": "/x/y.jar" }""");
+        var c = CliConfig.LoadOrThrow(path);
+        Assert.Equal("/x/y.jar", c.JarPath);
+    }
+
+    [Fact]
+    public void LoadOrThrow_Missing_ReturnsEmpty()
+    {
+        var path = Path.Combine(_tempDir, "no-such.json");
+        var c = CliConfig.LoadOrThrow(path);
+        Assert.Same(CliConfig.Empty, c);
+    }
+
+    [Fact]
+    public void CliConfigException_DoesNotInheritInvalidOperationException()
+    {
+        // RunCommand has a catch (InvalidOperationException) for JarManager
+        // errors. CliConfigException must not be caught by it — config errors
+        // are distinct from JAR errors (exit 1 vs exit 3). (C7)
+        Assert.False(typeof(InvalidOperationException).IsAssignableFrom(typeof(CliConfigException)));
+    }
+
+    [Fact]
     public void Resolve_CliWinsOverEnvAndConfig()
     {
         var env = Env(("SYNTHEA_CLI_JAR_PATH", "/env/path"));
