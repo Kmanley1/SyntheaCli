@@ -154,6 +154,15 @@ synthea --verbose run -o ./output -p 5 --state OH
 synthea --quiet run -o ./output -p 5 --state OH
 ```
 
+### Environment check
+
+```bash
+# Probe Java, cache dir, cached JAR age, config file, GitHub reachability, and free disk
+synthea doctor
+# Exits 0 on OK + WARN, exits 1 on any FAIL. Warnings are informational —
+# `--jar` lets you bypass GitHub entirely if the reachability probe is unhappy.
+```
+
 ---
 
 ## Cache management

@@ -44,6 +44,12 @@ internal static class Program
         sc.AddSingleton<IJarSource>(sp => new JarManager(
             http: BuildHttpClient(CliConfig.Load()),
             logger: sp.GetRequiredService<ILogger<JarManager>>()));
+        // (B6) `synthea doctor` needs lightweight probes. The HttpClient
+        // used for the reachability probe is independent of the JarManager
+        // client so the proxy/UA chain stays single-purpose there.
+        sc.AddSingleton<IFileSystem, DefaultFileSystem>();
+        sc.AddSingleton<IDiskSpaceProbe, DefaultDiskSpaceProbe>();
+        sc.AddSingleton<IGitHubReachabilityProbe>(_ => new HttpGitHubReachabilityProbe(BuildHttpClient(CliConfig.Load())));
         return sc.BuildServiceProvider();
     }
 
@@ -71,6 +77,13 @@ internal static class Program
         var runner = services.GetRequiredService<IProcessRunner>();
         var jarSource = services.GetRequiredService<IJarSource>();
         var javaDetector = services.GetRequiredService<IJavaDetector>();
+        // Doctor-only services: fall back to defaults so test fixtures that
+        // pre-date Phase 9 don't have to register every interface to exercise
+        // `synthea run`. Production wires real impls via BuildDefaultServices.
+        var fileSystem = services.GetService<IFileSystem>() ?? new DefaultFileSystem();
+        var diskProbe = services.GetService<IDiskSpaceProbe>() ?? new DefaultDiskSpaceProbe();
+        var gitHubProbe = services.GetService<IGitHubReachabilityProbe>()
+            ?? new HttpGitHubReachabilityProbe(BuildHttpClient(CliConfig.Load()));
 
         var root = new RootCommand("CLI wrapper around MITRE Synthea synthetic patient generator");
 
@@ -113,6 +126,7 @@ internal static class Program
 
         root.Subcommands.Add(RunCommand.Build(runner, jarSource, javaDetector, refreshOpt, javaOpt, skipJdkCheckOpt));
         root.Subcommands.Add(CacheCommand.Build(jarSource));
+        root.Subcommands.Add(DoctorCommand.Build(jarSource, javaDetector, fileSystem, gitHubProbe, diskProbe, javaOpt));
 
         if (args.Length == 0) args = new[] { "--help" };
         return await root.Parse(args).InvokeAsync();
