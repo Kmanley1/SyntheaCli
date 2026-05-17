@@ -35,6 +35,7 @@ public class SyntheaRunTests : IDisposable
         var sc = new ServiceCollection();
         sc.AddSingleton<IProcessRunner>(new FakeRunner(outputDir));
         sc.AddSingleton<IJarSource>(new StubJarSource(jar));
+        sc.AddSingleton<IJavaDetector>(new StubJavaDetector());
         await using var services = sc.BuildServiceProvider();
 
         var exit = await Program.RunAsync(new[] { "run", "--output", _workDir, "--population", "1" }, services);
@@ -77,5 +78,11 @@ public class SyntheaRunTests : IDisposable
             CancellationToken token = default,
             JarOverrides? overrides = null)
             => Task.FromResult(_jar);
+    }
+
+    private sealed class StubJavaDetector : IJavaDetector
+    {
+        public Task<JavaProbeResult> ProbeAsync(string javaPath, CancellationToken cancelToken = default)
+            => Task.FromResult(new JavaProbeResult(true, 21, "21.0.5", null));
     }
 }
