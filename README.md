@@ -1,6 +1,7 @@
 # synthea-cli
 
 [![NuGet](https://img.shields.io/nuget/v/synthea-cli.svg)](https://www.nuget.org/packages/synthea-cli/)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/synthea-cli.svg)](https://www.nuget.org/packages/synthea-cli/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **Generate realistic synthetic patient data on Windows, macOS, or Linux with a single command.** No HIPAA exposure, no Java setup, no JAR hunting — `synthea-cli` wraps MITRE's [Synthea™](https://github.com/synthetichealth/synthea) (the gold-standard synthetic health-record generator) as a `dotnet tool` you install once and forget about.
