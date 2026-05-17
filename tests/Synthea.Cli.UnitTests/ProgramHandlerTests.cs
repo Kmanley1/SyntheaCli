@@ -775,4 +775,71 @@ public class ProgramHandlerTests : IDisposable
         var code = await Run("run", "--output", outDir, "--state", "OH");
         Assert.Equal(1, code);
     }
+
+    // D2 (Phase 14): --progress flag.
+
+    [Fact]
+    public async Task Progress_Off_NoStatusLineOnStderr()
+    {
+        // Without --progress, no synthetic "Generated …" line is emitted
+        // even when the runner emits progress-shaped stderr.
+        _runner.StderrText = "1 -- Bob (45 y/o M) Cleveland, Ohio\n2 -- Alice (32 y/o F) Akron, Ohio\n";
+        var (stderr, code) = await RunCapturingStderr("run", "--output", Path.Combine(_tempDir, "out-prog-off"), "--state", "OH", "-p", "2");
+        Assert.Equal(0, code);
+        Assert.DoesNotContain("Generated ", stderr);
+    }
+
+    [Fact]
+    public async Task Progress_On_EmitsFinalStatusLineWhenPatientsReported()
+    {
+        // With --progress, the post-pump flush emits at least one status
+        // line summarizing the parser's final count. We don't try to
+        // exercise the 5-second timer (would slow the suite); the final
+        // flush is the deterministic part of the contract.
+        _runner.StderrText = "1 -- Bob (45 y/o M) Cleveland, Ohio\n2 -- Alice (32 y/o F) Akron, Ohio\n";
+        var (stderr, code) = await RunCapturingStderr("run", "--output", Path.Combine(_tempDir, "out-prog-on"), "--state", "OH", "-p", "2", "--progress");
+        Assert.Equal(0, code);
+        Assert.Contains("Generated 2/2 patients (100%)", stderr);
+    }
+
+    [Fact]
+    public async Task Progress_NoPopulation_FallsBackToCountOnly()
+    {
+        // Without -p we can't render "X/Y (Z%)" — just the count.
+        _runner.StderrText = "1 -- Bob (45 y/o M) Cleveland, Ohio\n";
+        var (stderr, code) = await RunCapturingStderr("run", "--output", Path.Combine(_tempDir, "out-prog-nopop"), "--state", "OH", "--progress");
+        Assert.Equal(0, code);
+        Assert.Contains("Generated 1 patients", stderr);
+        Assert.DoesNotContain("/0", stderr);
+    }
+
+    [Fact]
+    public async Task Progress_NoPatientLines_EmitsNothing()
+    {
+        // The flush is a no-op if the parser never saw a progress-shaped
+        // line — e.g. a run that failed before generation started.
+        _runner.StderrText = "Loading modules...\n";
+        var (stderr, code) = await RunCapturingStderr("run", "--output", Path.Combine(_tempDir, "out-prog-empty"), "--state", "OH", "--progress");
+        Assert.Equal(0, code);
+        Assert.DoesNotContain("Generated ", stderr);
+    }
+
+    private async Task<(string Stderr, int ExitCode)> RunCapturingStderr(params string[] args)
+    {
+        // Swap Console.Error so we can read what RunCommand writes. We
+        // restore it in a finally so an exception in the handler doesn't
+        // leave the static binding rerouted for the next test.
+        var sw = new StringWriter();
+        var original = Console.Error;
+        Console.SetError(sw);
+        try
+        {
+            var code = await Run(args);
+            return (sw.ToString(), code);
+        }
+        finally
+        {
+            Console.SetError(original);
+        }
+    }
 }
