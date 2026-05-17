@@ -296,10 +296,15 @@ internal static class RunCommand
         }
         if (o.Modules is not null)
         {
+            // C4: callers cross-OS habituated to one path separator can pass
+            // the other and we silently translate. Synthea's `-m` is
+            // colon/semicolon joined via java.io.File.pathSeparator (`:`
+            // on Unix, `;` on Windows); a Linux scripter who pipes the
+            // same command to a Windows runner shouldn't break.
             foreach (var m in o.Modules)
             {
                 argList.Add("--module");
-                argList.Add(m);
+                argList.Add(NormalizeModuleSeparators(m));
             }
         }
         if (o.InitialSnapshot is not null)
@@ -379,6 +384,16 @@ internal static class RunCommand
             {
                 argList.Add("--" + kv);
             }
+        }
+        // C5: With more than 10k patients in one directory, filesystem
+        // browsers and shells (mostly Windows Explorer) get slow. Enabling
+        // Synthea's id-substring subfolder bucketing keeps the JSON output
+        // tree usable. We skip this if the caller already set the property
+        // via --property so an explicit override always wins.
+        if (o.Population is int pop && pop > SubfoldersAutoThreshold
+            && !PropertiesContainKey(o.Properties, SubfoldersPropertyKey))
+        {
+            argList.Add($"--{SubfoldersPropertyKey}=true");
         }
         if (!string.IsNullOrWhiteSpace(o.FhirVersion))
         {
@@ -937,6 +952,30 @@ internal static class RunCommand
                                   System.Globalization.DateTimeStyles.None, out _)
             ? null
             : $"Date must be ISO YYYY-MM-DD (got '{v}').";
+
+    // ----- Platform niceties (C4 + C5) -----------------------------------
+
+    internal const string SubfoldersPropertyKey = "exporter.subfolders_by_id_substring";
+    internal const int SubfoldersAutoThreshold = 10_000;
+
+    internal static string NormalizeModuleSeparators(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return value;
+        var foreign = OperatingSystem.IsWindows() ? ':' : ';';
+        var local = Path.PathSeparator;
+        return foreign == local ? value : value.Replace(foreign, local);
+    }
+
+    internal static bool PropertiesContainKey(string[]? properties, string key)
+    {
+        if (properties is null || properties.Length == 0) return false;
+        var prefix = key + "=";
+        foreach (var p in properties)
+        {
+            if (p.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return true;
+        }
+        return false;
+    }
 
     // C3: --java-heap <size> — overrides the population-based heap tier.
     // The value is the raw -Xmx payload (e.g. "4g", "1024m"); we accept
