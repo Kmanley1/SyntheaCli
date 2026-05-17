@@ -40,6 +40,7 @@ internal static class Program
                 o.TimestampFormat = "HH:mm:ss ";
             }));
         sc.AddSingleton<IProcessRunner, DefaultProcessRunner>();
+        sc.AddSingleton<IJavaDetector, JavaDetector>();
         sc.AddSingleton<IJarSource>(sp => new JarManager(
             http: BuildHttpClient(CliConfig.Load()),
             logger: sp.GetRequiredService<ILogger<JarManager>>()));
@@ -69,6 +70,7 @@ internal static class Program
     {
         var runner = services.GetRequiredService<IProcessRunner>();
         var jarSource = services.GetRequiredService<IJarSource>();
+        var javaDetector = services.GetRequiredService<IJavaDetector>();
 
         var root = new RootCommand("CLI wrapper around MITRE Synthea synthetic patient generator");
 
@@ -96,12 +98,20 @@ internal static class Program
             Recursive = true
         };
 
+        var skipJdkCheckOpt = new Option<bool>("--skip-jdk-check")
+        {
+            Description = "Bypass the Java 17+ preflight check. Use only for custom JREs whose " +
+                          "-version output we can't parse; otherwise fix Java first.",
+            Recursive = true
+        };
+
         root.Options.Add(refreshOpt);
         root.Options.Add(javaOpt);
         root.Options.Add(verboseOpt);
         root.Options.Add(quietOpt);
+        root.Options.Add(skipJdkCheckOpt);
 
-        root.Subcommands.Add(RunCommand.Build(runner, jarSource, refreshOpt, javaOpt));
+        root.Subcommands.Add(RunCommand.Build(runner, jarSource, javaDetector, refreshOpt, javaOpt, skipJdkCheckOpt));
         root.Subcommands.Add(CacheCommand.Build(jarSource));
 
         if (args.Length == 0) args = new[] { "--help" };

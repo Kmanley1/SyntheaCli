@@ -19,7 +19,8 @@ internal static class RunCommand
         "fhir", "csv", "ccda", "bulkfhir", "bulk-fhir", "cpcds"
     };
 
-    internal static Command Build(IProcessRunner runner, IJarSource jarSource, Option<bool> refreshOpt, Option<string?> javaOpt)
+    internal static Command Build(IProcessRunner runner, IJarSource jarSource, IJavaDetector javaDetector,
+        Option<bool> refreshOpt, Option<string?> javaOpt, Option<bool> skipJdkCheckOpt)
     {
         var runCmd = new Command("run", "Generate synthetic health records");
 
@@ -108,6 +109,30 @@ internal static class RunCommand
             if (printArgs)
             {
                 return PrintInvocation(hosting, args, jarSource);
+            }
+
+            var skipJdk = parseResult.GetValue(skipJdkCheckOpt);
+            if (!skipJdk)
+            {
+                var probe = await javaDetector.ProbeAsync(hosting.JavaPath, cancelToken);
+                if (!probe.Found)
+                {
+                    Console.Error.WriteLine($"Java not found at '{hosting.JavaPath}'. Use --java-path or install OpenJDK 17 LTS.");
+                    if (!string.IsNullOrWhiteSpace(probe.ErrorMessage))
+                        Console.Error.WriteLine($"Details: {probe.ErrorMessage}");
+                    return 3;
+                }
+                if (probe.MajorVersion is { } major && major < 17)
+                {
+                    Console.Error.WriteLine(
+                        $"Synthea requires Java 17 or later (found Java {major}). " +
+                        "Install OpenJDK 17 LTS or newer; see https://adoptium.net.");
+                    return 1;
+                }
+            }
+            else
+            {
+                Console.Error.WriteLine("warning: --skip-jdk-check set; bypassing Java 17+ preflight.");
             }
 
             Directory.CreateDirectory(hosting.Output.FullName);
