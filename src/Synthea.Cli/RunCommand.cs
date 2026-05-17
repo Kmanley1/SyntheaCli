@@ -93,7 +93,21 @@ internal static class RunCommand
                 fhirVerOpt, initialSnapOpt, updatedSnapOpt, daysForwardOpt, formatOpt, addFormatOpt,
                 jarOpt, insistChecksumOpt, passthru);
             var printArgs = parseResult.GetValue(printArgsOpt);
-            var jarOverrides = ResolveJarOverrides(hosting);
+
+            // C7: malformed ~/.synthea-cli/config.json must fail the run with
+            // a clean exit 1 (not a stack trace, not exit 3 from the JAR
+            // catch). Load explicitly here so we can map the error cleanly.
+            CliConfig config;
+            try
+            {
+                config = CliConfig.LoadOrThrow();
+            }
+            catch (CliConfigException ex)
+            {
+                Console.Error.WriteLine($"error: {ex.Message}");
+                return 1;
+            }
+            var jarOverrides = ResolveJarOverrides(hosting, config, Environment.GetEnvironmentVariable);
 
             if (!string.IsNullOrWhiteSpace(args.City) && string.IsNullOrWhiteSpace(args.State))
             {
