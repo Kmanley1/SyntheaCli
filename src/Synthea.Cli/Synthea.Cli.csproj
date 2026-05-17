@@ -10,11 +10,15 @@
     <ToolCommandName>synthea</ToolCommandName>
     <DotNetCliToolAliases>syn</DotNetCliToolAliases>
     <PackageVersion>1.0.0</PackageVersion>
-    <Description>CLI wrapper around MITRE Synthea synthetic patient generator</Description>
-    <PackageTags>synthea;health;cli;dotnet-tool</PackageTags>
+    <Description>CLI wrapper around MITRE Synthea synthetic patient generator. Downloads the latest Synthea release, manages a local JAR cache, and exposes Synthea's generation flags as first-class .NET CLI options.</Description>
+    <!-- Tags drive NuGet search relevance. Order matters: most-specific
+         to most-general so query tokenization favors the right hits. -->
+    <PackageTags>synthea;synthetic-data;fhir;hl7;ehr;healthcare;health-data;cli;dotnet-tool</PackageTags>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <RepositoryUrl>https://github.com/Kmanley1/Synthea.Cli</RepositoryUrl>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageProjectUrl>https://github.com/Kmanley1/SyntheaCli</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Kmanley1/SyntheaCli</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <!-- Publish symbols as a .snupkg alongside the .nupkg so step-into
          debugging works for downstream consumers. dotnet nuget push of the
@@ -34,6 +38,9 @@
     <!-- csproj lives in src/Synthea.Cli/, so the repo root is two levels up. -->
     <None Include="../../LICENSE" Pack="true" PackagePath="" />
     <None Include="../../README.md" Pack="true" PackagePath="" />
+    <!-- 128x128 PNG sourced next to the csproj; nuget.org renders it as
+         the package thumbnail in search results and on the detail page. -->
+    <None Include="icon.png" Pack="true" PackagePath="" />
   </ItemGroup>
 
   <ItemGroup>
