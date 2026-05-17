@@ -1,0 +1,46 @@
+name: Release Notes
+
+# Fires after the maintainer pushes a vX.Y.Z tag. The matching GitHub
+# Release is created automatically (or pre-existing — `gh release create
+# --notes ""` is idempotent here), and this workflow rewrites the body
+# with a grouped Conventional Commits summary so the release page is
+# useful out of the box.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Need full history to walk back to the previous tag.
+          fetch-depth: 0
+
+      - name: Generate release notes
+        id: notes
+        shell: pwsh
+        run: |
+          $notes = & pwsh -File tools/extract-release-notes.ps1 -ToRef ${{ github.ref_name }}
+          # Use a delimiter so multiline output survives the env transport.
+          $delim = "EOF_$([guid]::NewGuid().ToString('N'))"
+          "notes<<$delim"      | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          $notes               | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          $delim               | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if gh release view "$tag" > /dev/null 2>&1; then
+            gh release edit "$tag" --notes "${{ steps.notes.outputs.notes }}"
+          else
+            gh release create "$tag" --title "$tag" --notes "${{ steps.notes.outputs.notes }}"
+          fi

@@ -296,11 +296,20 @@ GitHub Actions matrix runs on `ubuntu-latest` and `windows-latest` for every PR.
 
 ### Releasing
 
-Tag a version (`vX.Y.Z`) and push. `.github/workflows/nuget.yml` runs `dotnet pack` and `dotnet nuget push` automatically.
+Tag a version (`vX.Y.Z`) and push. Two workflows fire on the tag:
+
+- `.github/workflows/nuget.yml` runs `dotnet pack` and `dotnet nuget push`.
+- `.github/workflows/release-notes.yml` runs `tools/extract-release-notes.ps1` against the commit range since the previous tag, groups commits by Conventional Commits type (`feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore`), and writes the grouped markdown to the GitHub Release body.
 
 ```bash
 git tag -a v0.4.1 -m "..."
 git push origin v0.4.1
+```
+
+To preview the notes locally before tagging:
+
+```powershell
+pwsh -File tools/extract-release-notes.ps1 v0.4.0 HEAD
 ```
 
 ### Useful project structure
