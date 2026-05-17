@@ -41,4 +41,10 @@ internal record SyntheaArgs(
     // BOTH --exporter.fhir.use_us_core_ig=true AND
     // --exporter.fhir.us_core_version=N before any format-export lines, so
     // Synthea picks up the IG before deciding what to write.
-    string? UsCoreVersion = null);
+    string? UsCoreVersion = null,
+    // Phase 8 (A5+A8): Flexporter mapping + custom IG dir + bulk-data
+    // toggle. Flexporter and IG-dir map to Synthea's `-fm` / `-ig`
+    // positional-flag forms; BulkData maps to --exporter.fhir.bulk_data=true.
+    FileInfo? FlexporterMapping = null,
+    DirectoryInfo? IgDir = null,
+    bool BulkData = false);

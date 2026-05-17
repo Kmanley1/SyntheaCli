@@ -645,6 +645,65 @@ public class ProgramHandlerTests : IDisposable
         Assert.Null(_runner.StartInfo);
     }
 
+    // A5+A8 (Phase 8): Flexporter mapping + custom IG dir + bulk-data.
+
+    [Fact]
+    public async Task FlexporterMapping_ExistingFile_EmitsDashFm()
+    {
+        var mapping = Path.Combine(_tempDir, "flexporter.yaml");
+        File.WriteAllText(mapping, "mappings: []\n");
+        var outDir = Path.Combine(_tempDir, "out-flex");
+        var code = await Run("run", "--output", outDir, "--flexporter-mapping", mapping);
+        Assert.Equal(0, code);
+        var list = _runner.StartInfo!.ArgumentList;
+        var fmIdx = list.IndexOf("-fm");
+        Assert.True(fmIdx >= 0);
+        Assert.Equal(Path.GetFullPath(mapping), list[fmIdx + 1]);
+    }
+
+    [Fact]
+    public async Task FlexporterMapping_MissingFile_Rejected()
+    {
+        var outDir = Path.Combine(_tempDir, "out-flex-bad");
+        var code = await Run("run", "--output", outDir,
+            "--flexporter-mapping", Path.Combine(_tempDir, "does-not-exist.yaml"));
+        Assert.NotEqual(0, code);
+        Assert.Null(_runner.StartInfo);
+    }
+
+    [Fact]
+    public async Task IgDir_ExistingDirectory_EmitsDashIg()
+    {
+        var ig = Path.Combine(_tempDir, "ig");
+        Directory.CreateDirectory(ig);
+        var outDir = Path.Combine(_tempDir, "out-ig");
+        var code = await Run("run", "--output", outDir, "--ig-dir", ig);
+        Assert.Equal(0, code);
+        var list = _runner.StartInfo!.ArgumentList;
+        var igIdx = list.IndexOf("-ig");
+        Assert.True(igIdx >= 0);
+        Assert.Equal(Path.GetFullPath(ig), list[igIdx + 1]);
+    }
+
+    [Fact]
+    public async Task IgDir_MissingDirectory_Rejected()
+    {
+        var outDir = Path.Combine(_tempDir, "out-ig-bad");
+        var code = await Run("run", "--output", outDir,
+            "--ig-dir", Path.Combine(_tempDir, "no-such-dir"));
+        Assert.NotEqual(0, code);
+        Assert.Null(_runner.StartInfo);
+    }
+
+    [Fact]
+    public async Task BulkData_Flag_EmitsExporterProperty()
+    {
+        var outDir = Path.Combine(_tempDir, "out-bulk");
+        var code = await Run("run", "--output", outDir, "--bulk-data");
+        Assert.Equal(0, code);
+        Assert.Contains("--exporter.fhir.bulk_data=true", _runner.StartInfo!.ArgumentList);
+    }
+
     [Fact]
     public async Task JavaProcess_NonZeroExit_WithRecognizedStderr_StillReturnsJavasExitCode()
     {
