@@ -366,6 +366,103 @@ public class ProgramRefactorTests
         Assert.Equal(expected, Program.DetectLogLevel(args));
     }
 
+    // C4: cross-OS separator translation. Local separator stays local;
+    // foreign one is rewritten so Synthea's java.io.File.pathSeparator
+    // tokenizer sees the right delimiter.
+    [Fact]
+    public void Modules_ForeignSeparator_TranslatedToLocal()
+    {
+        var foreign = OperatingSystem.IsWindows() ? ':' : ';';
+        var local = Path.PathSeparator;
+        var input = $"a{foreign}b{foreign}c";
+        var normalized = RunCommand.NormalizeModuleSeparators(input);
+        Assert.Equal($"a{local}b{local}c", normalized);
+    }
+
+    [Fact]
+    public void Modules_LocalSeparator_PassedThroughUnchanged()
+    {
+        var local = Path.PathSeparator;
+        var input = $"a{local}b";
+        Assert.Equal(input, RunCommand.NormalizeModuleSeparators(input));
+    }
+
+    [Fact]
+    public void Modules_NoSeparator_PassedThroughUnchanged()
+    {
+        Assert.Equal("asthma", RunCommand.NormalizeModuleSeparators("asthma"));
+    }
+
+    [Fact]
+    public void BuildArgumentList_ModuleSeparator_Normalized()
+    {
+        var foreign = OperatingSystem.IsWindows() ? ':' : ';';
+        var local = Path.PathSeparator;
+        var args = new SyntheaArgs(
+            State: null, City: null, Gender: null, AgeRange: null,
+            ModuleDir: null, Modules: new[] { $"flu{foreign}covid" },
+            Population: null, Seed: null, Config: null, Zip: null, FhirVersion: null,
+            InitialSnapshot: null, UpdatedSnapshot: null, DaysForward: null,
+            Formats: System.Array.Empty<string>(),
+            AdditionalFormats: System.Array.Empty<string>(),
+            Passthru: System.Array.Empty<string>());
+        var list = RunCommand.BuildArgumentList(args);
+        Assert.Contains($"flu{local}covid", list);
+    }
+
+    // C5: automatic subfolders_by_id_substring above the 10k threshold,
+    // unless the caller has already set the property explicitly.
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData(1, false)]
+    [InlineData(10_000, false)]
+    [InlineData(10_001, true)]
+    [InlineData(50_000, true)]
+    public void BuildArgumentList_SubfoldersAutoEmit_FollowsPopulation(int? population, bool expected)
+    {
+        var args = new SyntheaArgs(
+            State: null, City: null, Gender: null, AgeRange: null,
+            ModuleDir: null, Modules: null, Population: population, Seed: null,
+            Config: null, Zip: null, FhirVersion: null,
+            InitialSnapshot: null, UpdatedSnapshot: null, DaysForward: null,
+            Formats: System.Array.Empty<string>(),
+            AdditionalFormats: System.Array.Empty<string>(),
+            Passthru: System.Array.Empty<string>());
+        var list = RunCommand.BuildArgumentList(args);
+        var emitted = list.Contains($"--{RunCommand.SubfoldersPropertyKey}=true");
+        Assert.Equal(expected, emitted);
+    }
+
+    [Fact]
+    public void BuildArgumentList_SubfoldersUserSet_NoAutoEmit()
+    {
+        // The user set subfolders=false explicitly; auto-emit must back off
+        // so we don't duplicate the property and trigger a stronger value.
+        var args = new SyntheaArgs(
+            State: null, City: null, Gender: null, AgeRange: null,
+            ModuleDir: null, Modules: null, Population: 50_000, Seed: null,
+            Config: null, Zip: null, FhirVersion: null,
+            InitialSnapshot: null, UpdatedSnapshot: null, DaysForward: null,
+            Formats: System.Array.Empty<string>(),
+            AdditionalFormats: System.Array.Empty<string>(),
+            Passthru: System.Array.Empty<string>(),
+            Properties: new[] { $"{RunCommand.SubfoldersPropertyKey}=false" });
+        var list = RunCommand.BuildArgumentList(args);
+        Assert.Contains($"--{RunCommand.SubfoldersPropertyKey}=false", list);
+        Assert.DoesNotContain($"--{RunCommand.SubfoldersPropertyKey}=true", list);
+    }
+
+    [Theory]
+    [InlineData("exporter.subfolders_by_id_substring=true", true)]
+    [InlineData("EXPORTER.subfolders_by_ID_substring=false", true)] // case-insensitive
+    [InlineData("other.property=true", false)]
+    [InlineData("exporter.subfolders_by_id_substring", false)]      // not KEY=VALUE → not set
+    public void PropertiesContainKey_MatchesIgnoringCase(string property, bool expected)
+    {
+        Assert.Equal(expected, RunCommand.PropertiesContainKey(
+            new[] { property }, RunCommand.SubfoldersPropertyKey));
+    }
+
     private sealed class NoopRunner : IProcessRunner
     {
         public IProcess Start(ProcessStartInfo psi) => throw new NotSupportedException();
