@@ -73,6 +73,7 @@ internal static class RunCommand
             Description = "Allow Synthea's overflow generation (-o true). " +
                           "Off by default; turn on for full-fidelity reruns of past results."
         };
+        var propertyOpt = CreatePropertyOption();                 // A6
         var passthru = CreatePassthruArgument();
 
         runCmd.Options.Add(outputOpt);
@@ -101,6 +102,7 @@ internal static class RunCommand
         runCmd.Options.Add(clinicianSeedOpt);
         runCmd.Options.Add(singlePersonSeedOpt);
         runCmd.Options.Add(overflowOpt);
+        runCmd.Options.Add(propertyOpt);
         runCmd.Arguments.Add(passthru);
 
         runCmd.TreatUnmatchedTokensAsErrors = false;
@@ -111,7 +113,8 @@ internal static class RunCommand
                 genderOpt, ageOpt, moduleDirOpt, moduleOpt, popOpt, seedOpt, configOpt, zipOpt,
                 fhirVerOpt, initialSnapOpt, updatedSnapOpt, daysForwardOpt, formatOpt, addFormatOpt,
                 jarOpt, insistChecksumOpt, passthru,
-                referenceDateOpt, endDateOpt, allowFutureEndOpt, clinicianSeedOpt, singlePersonSeedOpt, overflowOpt);
+                referenceDateOpt, endDateOpt, allowFutureEndOpt, clinicianSeedOpt, singlePersonSeedOpt, overflowOpt,
+                propertyOpt);
             var printArgs = parseResult.GetValue(printArgsOpt);
 
             // C7: malformed ~/.synthea-cli/config.json must fail the run with
@@ -329,6 +332,16 @@ internal static class RunCommand
             argList.Add("-o");
             argList.Add("true");
         }
+        // A6: each --property KEY=VALUE becomes Synthea's documented
+        // `--KEY=VALUE` form. The validator on the option guarantees a
+        // single '=' and a well-formed key, so we don't re-check here.
+        if (o.Properties is not null)
+        {
+            foreach (var kv in o.Properties)
+            {
+                argList.Add("--" + kv);
+            }
+        }
         if (!string.IsNullOrWhiteSpace(o.FhirVersion))
         {
             argList.Add("--exporter.fhir.version=" + o.FhirVersion!.ToUpperInvariant());
@@ -444,7 +457,8 @@ internal static class RunCommand
         Option<bool> allowFutureEndOpt,
         Option<int?> clinicianSeedOpt,
         Option<int?> singlePersonSeedOpt,
-        Option<bool> overflowOpt)
+        Option<bool> overflowOpt,
+        Option<string[]> propertyOpt)
     {
         var javaPathArg = parseResult.GetValue(javaOpt);
         var hosting = new HostingOptions(
@@ -476,7 +490,8 @@ internal static class RunCommand
             AllowFutureEnd: parseResult.GetValue(allowFutureEndOpt),
             ClinicianSeed: parseResult.GetValue(clinicianSeedOpt),
             SinglePersonSeed: parseResult.GetValue(singlePersonSeedOpt),
-            Overflow: parseResult.GetValue(overflowOpt));
+            Overflow: parseResult.GetValue(overflowOpt),
+            Properties: parseResult.GetValue(propertyOpt));
         return (hosting, args);
     }
 
@@ -760,6 +775,39 @@ internal static class RunCommand
         opt.Validators.Add(SingleTokenValidator(v =>
             int.TryParse(v, out _) ? null : "Single-person seed must be an integer."));
         return opt;
+    }
+
+    // A6: --property KEY=VALUE, repeatable. Lets callers pass any Synthea
+    // property we haven't surfaced as a first-class flag without dropping
+    // into the bare passthru argument tail.
+    private static readonly Regex PropertyKeyRegex =
+        new("^[a-zA-Z][a-zA-Z0-9._-]*$", RegexOptions.Compiled);
+
+    private static Option<string[]> CreatePropertyOption()
+    {
+        var opt = new Option<string[]>("--property")
+        {
+            Description = "Set a Synthea property as KEY=VALUE (repeatable). " +
+                          "Emitted as --KEY=VALUE. Use for properties without a first-class flag.",
+            Arity = ArgumentArity.ZeroOrMore
+        };
+        opt.Validators.Add(MultiTokenValidator(ValidateProperty));
+        return opt;
+    }
+
+    internal static string? ValidateProperty(string v)
+    {
+        if (string.IsNullOrEmpty(v))
+            return "Property must be KEY=VALUE.";
+        var eq = v.IndexOf('=');
+        if (eq < 0)
+            return $"Property '{v}' must be KEY=VALUE.";
+        if (v.IndexOf('=', eq + 1) >= 0)
+            return $"Property '{v}' must contain exactly one '=' (KEY=VALUE).";
+        var key = v.Substring(0, eq);
+        if (!PropertyKeyRegex.IsMatch(key))
+            return $"Property key '{key}' must match [a-zA-Z][a-zA-Z0-9._-]*.";
+        return null;
     }
 
     // ISO-8601 calendar date (YYYY-MM-DD), strict. Bare-yyyy / yyyy-mm
