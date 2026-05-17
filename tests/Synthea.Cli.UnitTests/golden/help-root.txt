@@ -1,0 +1,28 @@
+Description:
+  CLI wrapper around MITRE Synthea synthetic patient generator
+
+Usage:
+  Synthea.Cli [command] [options]
+
+Options:
+  --refresh                Ignore cached JAR and download the newest release
+  --java-path <java-path>  Full path to the Java executable (defaults to 'java' on PATH)
+  --verbose                Enable debug-level logging
+  --quiet                  Suppress info logs; show only warnings and errors
+  --skip-jdk-check         Bypass the Java 17+ preflight check. Use only for custom JREs whose -version output we can't parse; otherwise fix Java first.
+  -?, -h, --help           Show help and usage information
+  --version                Show version information
+
+Commands:
+  run <args>  Generate synthetic health records.
+  
+              Examples:
+                synthea run -o ./out -p 100 --state OH --add-format CSV
+                synthea run -o ./out -p 5 --state Ohio --gender F --age-range 30-40
+                synthea run -o ./out -p 50000 --us-core-version 7 --fhir-version R5
+                synthea run -o ./out -p 1000 --seed 42 --clinician-seed 7 --single-person-seed 9
+                synthea run -o ./out --jar ~/synthea.jar --dry-run
+  cache       Manage the local Synthea JAR cache
+  doctor      Run environment checks and report Java, cache, config, network, and disk status
+  modules     Inspect Synthea modules bundled in the cached JAR or a --module-dir
+

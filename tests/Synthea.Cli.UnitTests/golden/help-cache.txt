@@ -1,0 +1,18 @@
+Description:
+  Manage the local Synthea JAR cache
+
+Usage:
+  Synthea.Cli cache [command] [options]
+
+Options:
+  -?, -h, --help           Show help and usage information
+  --refresh                Ignore cached JAR and download the newest release
+  --java-path <java-path>  Full path to the Java executable (defaults to 'java' on PATH)
+  --verbose                Enable debug-level logging
+  --quiet                  Suppress info logs; show only warnings and errors
+  --skip-jdk-check         Bypass the Java 17+ preflight check. Use only for custom JREs whose -version output we can't parse; otherwise fix Java first.
+
+Commands:
+  list   List cached Synthea JARs with size and last-modified date
+  clear  Delete all cached Synthea JARs
+
