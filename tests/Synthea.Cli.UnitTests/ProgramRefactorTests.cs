@@ -225,6 +225,51 @@ public class ProgramRefactorTests
     }
 
     [Fact]
+    public void BuildArgumentList_UsCoreVersion_EmittedBeforeFhirExportLines()
+    {
+        // (A9) The us_core_version property must precede the format-export
+        // block so Synthea sees the IG choice before evaluating exporters.
+        var args = new SyntheaArgs(
+            State: null, City: null, Gender: null, AgeRange: null,
+            ModuleDir: null, Modules: null, Population: null, Seed: null,
+            Config: null, Zip: null, FhirVersion: null,
+            InitialSnapshot: null, UpdatedSnapshot: null, DaysForward: null,
+            Formats: new[] { "fhir" },
+            AdditionalFormats: System.Array.Empty<string>(),
+            Passthru: System.Array.Empty<string>(),
+            UsCoreVersion: "7");
+
+        var list = RunCommand.BuildArgumentList(args);
+        var enableIdx = list.IndexOf("--exporter.fhir.use_us_core_ig=true");
+        var verIdx = list.IndexOf("--exporter.fhir.us_core_version=7");
+        var exportTrueIdx = list.IndexOf("--exporter.fhir.export=true");
+        Assert.True(enableIdx >= 0, "use_us_core_ig=true missing");
+        Assert.True(verIdx >= 0, "us_core_version=7 missing");
+        Assert.True(exportTrueIdx >= 0, "fhir.export=true missing");
+        Assert.True(enableIdx < exportTrueIdx,
+            $"use_us_core_ig (idx {enableIdx}) must precede fhir.export=true (idx {exportTrueIdx})");
+        Assert.True(verIdx < exportTrueIdx,
+            $"us_core_version (idx {verIdx}) must precede fhir.export=true (idx {exportTrueIdx})");
+    }
+
+    [Fact]
+    public void BuildArgumentList_NoUsCoreVersion_OmitsBothProperties()
+    {
+        var args = new SyntheaArgs(
+            State: null, City: null, Gender: null, AgeRange: null,
+            ModuleDir: null, Modules: null, Population: null, Seed: null,
+            Config: null, Zip: null, FhirVersion: null,
+            InitialSnapshot: null, UpdatedSnapshot: null, DaysForward: null,
+            Formats: System.Array.Empty<string>(),
+            AdditionalFormats: System.Array.Empty<string>(),
+            Passthru: System.Array.Empty<string>());
+
+        var list = RunCommand.BuildArgumentList(args);
+        Assert.DoesNotContain("--exporter.fhir.use_us_core_ig=true", list);
+        Assert.DoesNotContain(list, s => s.StartsWith("--exporter.fhir.us_core_version="));
+    }
+
+    [Fact]
     public void CreateProcessStartInfo_UsesWorkingDirectoryAndJar()
     {
         var tmpDir = Path.Combine(Path.GetTempPath(), "synthea-test-tmp");

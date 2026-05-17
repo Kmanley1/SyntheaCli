@@ -36,4 +36,9 @@ internal record SyntheaArgs(
     // Phase 6 (A6): repeatable --property KEY=VALUE pairs, emitted to
     // Synthea as `--KEY=VALUE`. Lets callers reach any Synthea property
     // we haven't surfaced as a first-class flag.
-    string[]? Properties = null);
+    string[]? Properties = null,
+    // Phase 7 (A9): US Core IG version. When set, BuildArgumentList emits
+    // BOTH --exporter.fhir.use_us_core_ig=true AND
+    // --exporter.fhir.us_core_version=N before any format-export lines, so
+    // Synthea picks up the IG before deciding what to write.
+    string? UsCoreVersion = null);

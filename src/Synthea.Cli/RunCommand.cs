@@ -74,6 +74,7 @@ internal static class RunCommand
                           "Off by default; turn on for full-fidelity reruns of past results."
         };
         var propertyOpt = CreatePropertyOption();                 // A6
+        var usCoreVerOpt = CreateUsCoreVersionOption();           // A9
         var passthru = CreatePassthruArgument();
 
         runCmd.Options.Add(outputOpt);
@@ -103,6 +104,7 @@ internal static class RunCommand
         runCmd.Options.Add(singlePersonSeedOpt);
         runCmd.Options.Add(overflowOpt);
         runCmd.Options.Add(propertyOpt);
+        runCmd.Options.Add(usCoreVerOpt);
         runCmd.Arguments.Add(passthru);
 
         runCmd.TreatUnmatchedTokensAsErrors = false;
@@ -114,7 +116,7 @@ internal static class RunCommand
                 fhirVerOpt, initialSnapOpt, updatedSnapOpt, daysForwardOpt, formatOpt, addFormatOpt,
                 jarOpt, insistChecksumOpt, passthru,
                 referenceDateOpt, endDateOpt, allowFutureEndOpt, clinicianSeedOpt, singlePersonSeedOpt, overflowOpt,
-                propertyOpt);
+                propertyOpt, usCoreVerOpt);
             var printArgs = parseResult.GetValue(printArgsOpt);
 
             // C7: malformed ~/.synthea-cli/config.json must fail the run with
@@ -346,6 +348,15 @@ internal static class RunCommand
         {
             argList.Add("--exporter.fhir.version=" + o.FhirVersion!.ToUpperInvariant());
         }
+        // (A9) US Core IG enable + version. Must precede the format-export
+        // block so Synthea reads the IG choice before deciding what to
+        // write. Validator on --us-core-version restricts to the published
+        // set, so we don't re-check the value here.
+        if (!string.IsNullOrWhiteSpace(o.UsCoreVersion))
+        {
+            argList.Add("--exporter.fhir.use_us_core_ig=true");
+            argList.Add($"--exporter.fhir.us_core_version={o.UsCoreVersion}");
+        }
         var formatPropertyMap = new Dictionary<string, string>
         {
             ["fhir"] = "exporter.fhir.export",
@@ -458,7 +469,8 @@ internal static class RunCommand
         Option<int?> clinicianSeedOpt,
         Option<int?> singlePersonSeedOpt,
         Option<bool> overflowOpt,
-        Option<string[]> propertyOpt)
+        Option<string[]> propertyOpt,
+        Option<string?> usCoreVerOpt)
     {
         var javaPathArg = parseResult.GetValue(javaOpt);
         var hosting = new HostingOptions(
@@ -491,7 +503,8 @@ internal static class RunCommand
             ClinicianSeed: parseResult.GetValue(clinicianSeedOpt),
             SinglePersonSeed: parseResult.GetValue(singlePersonSeedOpt),
             Overflow: parseResult.GetValue(overflowOpt),
-            Properties: parseResult.GetValue(propertyOpt));
+            Properties: parseResult.GetValue(propertyOpt),
+            UsCoreVersion: parseResult.GetValue(usCoreVerOpt));
         return (hosting, args);
     }
 
@@ -661,11 +674,14 @@ internal static class RunCommand
 
     private static Option<string?> CreateFhirVersionOption()
     {
-        var opt = new Option<string?>("--fhir-version") { Description = "FHIR version (R4 or STU3)" };
+        // (A10) R5 added to the allowlist. Synthea ≥ v4 supports R5
+        // exporters; older versions silently no-op. The CLI is permissive
+        // either way — Synthea is the source of truth for export support.
+        var opt = new Option<string?>("--fhir-version") { Description = "FHIR version (STU3, R4, or R5)" };
         opt.Validators.Add(SingleTokenValidator(v =>
         {
             var u = v.ToUpperInvariant();
-            return u == "R4" || u == "STU3" ? null : "FHIR version must be R4 or STU3.";
+            return u == "R4" || u == "STU3" || u == "R5" ? null : "FHIR version must be STU3, R4, or R5.";
         }));
         return opt;
     }
@@ -792,6 +808,26 @@ internal static class RunCommand
             Arity = ArgumentArity.ZeroOrMore
         };
         opt.Validators.Add(MultiTokenValidator(ValidateProperty));
+        return opt;
+    }
+
+    // A9: US Core IG version allowlist. The full set Synthea exposes via
+    // its `exporter.fhir.us_core_version` property as of v3.3+. New
+    // versions ship rarely; expanding the allowlist is a deliberate act.
+    internal static readonly string[] UsCoreVersions = { "3.1.1", "4", "5", "6", "7" };
+
+    private static Option<string?> CreateUsCoreVersionOption()
+    {
+        var opt = new Option<string?>("--us-core-version")
+        {
+            Description = "US Core IG version to apply to FHIR export. " +
+                          "Allowed: " + string.Join(", ", UsCoreVersions) + ". " +
+                          "Implies --exporter.fhir.use_us_core_ig=true."
+        };
+        opt.Validators.Add(SingleTokenValidator(v =>
+            Array.IndexOf(UsCoreVersions, v) >= 0
+                ? null
+                : $"US Core version must be one of: {string.Join(", ", UsCoreVersions)}."));
         return opt;
     }
 
