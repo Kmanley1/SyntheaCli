@@ -47,4 +47,23 @@ internal static class ProcessHelpers
         while ((line = await src.ReadLineAsync()) is not null)
             dest.WriteLine(line);
     }
+
+    // Relay each line AND retain the last `capacity` lines in a ring buffer
+    // so the caller can inspect tail-of-stderr for a remediation match after
+    // the process exits non-zero. Buffer is bounded to avoid pinning a
+    // long-running Synthea run's full stderr in memory. (C6)
+    internal static async Task<IReadOnlyList<string>> RelayAndCapture(
+        StreamReader src, TextWriter dest, int capacity = 50)
+    {
+        if (capacity <= 0) throw new ArgumentOutOfRangeException(nameof(capacity));
+        var ring = new List<string>(capacity);
+        string? line;
+        while ((line = await src.ReadLineAsync()) is not null)
+        {
+            dest.WriteLine(line);
+            if (ring.Count >= capacity) ring.RemoveAt(0);
+            ring.Add(line);
+        }
+        return ring;
+    }
 }

@@ -174,10 +174,21 @@ internal static class RunCommand
                     try { proc.Kill(entireProcessTree: true); } catch { /* already exited */ }
                 });
                 var pumpOut = Task.Run(() => ProcessHelpers.Relay(proc.StandardOutput, Console.Out));
-                var pumpErr = Task.Run(() => ProcessHelpers.Relay(proc.StandardError, Console.Error));
+                var pumpErr = Task.Run(() => ProcessHelpers.RelayAndCapture(proc.StandardError, Console.Error));
 
                 await Task.WhenAll(pumpOut, pumpErr, proc.WaitForExitAsync());
-                return proc.ExitCode;
+                var exitCode = proc.ExitCode;
+                if (exitCode != 0)
+                {
+                    var capturedStderr = string.Join('\n', pumpErr.Result);
+                    var hint = SyntheaErrorPatterns.TryGetRemediation(capturedStderr);
+                    if (hint is not null)
+                    {
+                        Console.Error.WriteLine();
+                        Console.Error.WriteLine($"hint: {hint}");
+                    }
+                }
+                return exitCode;
             }
             catch (OperationCanceledException)
             {
