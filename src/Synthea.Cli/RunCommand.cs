@@ -75,6 +75,12 @@ internal static class RunCommand
         };
         var propertyOpt = CreatePropertyOption();                 // A6
         var usCoreVerOpt = CreateUsCoreVersionOption();           // A9
+        var flexporterOpt = CreateFlexporterMappingOption();      // A5
+        var igDirOpt = CreateIgDirOption();                       // A5
+        var bulkDataOpt = new Option<bool>("--bulk-data")         // A8
+        {
+            Description = "Emit FHIR resources as bulk-data NDJSON (--exporter.fhir.bulk_data=true)."
+        };
         var passthru = CreatePassthruArgument();
 
         runCmd.Options.Add(outputOpt);
@@ -105,6 +111,9 @@ internal static class RunCommand
         runCmd.Options.Add(overflowOpt);
         runCmd.Options.Add(propertyOpt);
         runCmd.Options.Add(usCoreVerOpt);
+        runCmd.Options.Add(flexporterOpt);
+        runCmd.Options.Add(igDirOpt);
+        runCmd.Options.Add(bulkDataOpt);
         runCmd.Arguments.Add(passthru);
 
         runCmd.TreatUnmatchedTokensAsErrors = false;
@@ -116,7 +125,7 @@ internal static class RunCommand
                 fhirVerOpt, initialSnapOpt, updatedSnapOpt, daysForwardOpt, formatOpt, addFormatOpt,
                 jarOpt, insistChecksumOpt, passthru,
                 referenceDateOpt, endDateOpt, allowFutureEndOpt, clinicianSeedOpt, singlePersonSeedOpt, overflowOpt,
-                propertyOpt, usCoreVerOpt);
+                propertyOpt, usCoreVerOpt, flexporterOpt, igDirOpt, bulkDataOpt);
             var printArgs = parseResult.GetValue(printArgsOpt);
 
             // C7: malformed ~/.synthea-cli/config.json must fail the run with
@@ -334,6 +343,27 @@ internal static class RunCommand
             argList.Add("-o");
             argList.Add("true");
         }
+        // A5: Flexporter mapping (-fm <path>) and IG dir (-ig <dir>).
+        // Both Synthea flag-form; emit before --property/format blocks and
+        // before positional state so Synthea parses them as flags, not
+        // positionals. Paths normalized to absolute so cwd changes don't
+        // break the JAR's view of them.
+        if (o.FlexporterMapping is not null)
+        {
+            argList.Add("-fm");
+            argList.Add(Path.GetFullPath(o.FlexporterMapping.FullName));
+        }
+        if (o.IgDir is not null)
+        {
+            argList.Add("-ig");
+            argList.Add(Path.GetFullPath(o.IgDir.FullName));
+        }
+        // A8: bulk-data property — companion to the format block below;
+        // emitted as Synthea's `--exporter.fhir.bulk_data=true`.
+        if (o.BulkData)
+        {
+            argList.Add("--exporter.fhir.bulk_data=true");
+        }
         // A6: each --property KEY=VALUE becomes Synthea's documented
         // `--KEY=VALUE` form. The validator on the option guarantees a
         // single '=' and a well-formed key, so we don't re-check here.
@@ -470,7 +500,10 @@ internal static class RunCommand
         Option<int?> singlePersonSeedOpt,
         Option<bool> overflowOpt,
         Option<string[]> propertyOpt,
-        Option<string?> usCoreVerOpt)
+        Option<string?> usCoreVerOpt,
+        Option<FileInfo?> flexporterOpt,
+        Option<DirectoryInfo?> igDirOpt,
+        Option<bool> bulkDataOpt)
     {
         var javaPathArg = parseResult.GetValue(javaOpt);
         var hosting = new HostingOptions(
@@ -504,7 +537,10 @@ internal static class RunCommand
             SinglePersonSeed: parseResult.GetValue(singlePersonSeedOpt),
             Overflow: parseResult.GetValue(overflowOpt),
             Properties: parseResult.GetValue(propertyOpt),
-            UsCoreVersion: parseResult.GetValue(usCoreVerOpt));
+            UsCoreVersion: parseResult.GetValue(usCoreVerOpt),
+            FlexporterMapping: parseResult.GetValue(flexporterOpt),
+            IgDir: parseResult.GetValue(igDirOpt),
+            BulkData: parseResult.GetValue(bulkDataOpt));
         return (hosting, args);
     }
 
@@ -808,6 +844,32 @@ internal static class RunCommand
             Arity = ArgumentArity.ZeroOrMore
         };
         opt.Validators.Add(MultiTokenValidator(ValidateProperty));
+        return opt;
+    }
+
+    // A5: Flexporter mapping file (`-fm`). Existence is checked at parse
+    // time so we fail before launching the JVM rather than after.
+    private static Option<FileInfo?> CreateFlexporterMappingOption()
+    {
+        var opt = new Option<FileInfo?>("--flexporter-mapping")
+        {
+            Description = "Path to a Flexporter mapping file (.yaml/.json). Maps to Synthea -fm <path>."
+        };
+        opt.Validators.Add(SingleTokenValidator(v =>
+            File.Exists(v) ? null : $"Flexporter mapping file does not exist: '{v}'."));
+        return opt;
+    }
+
+    // A5: Custom Implementation Guide directory (`-ig`). Same pattern as
+    // --module-dir; existence checked up-front.
+    private static Option<DirectoryInfo?> CreateIgDirOption()
+    {
+        var opt = new Option<DirectoryInfo?>("--ig-dir")
+        {
+            Description = "Directory of FHIR Implementation Guide resources. Maps to Synthea -ig <dir>."
+        };
+        opt.Validators.Add(SingleTokenValidator(v =>
+            Directory.Exists(v) ? null : $"IG directory does not exist: '{v}'."));
         return opt;
     }
 

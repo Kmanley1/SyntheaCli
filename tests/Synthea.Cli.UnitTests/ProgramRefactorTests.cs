@@ -270,6 +270,57 @@ public class ProgramRefactorTests
     }
 
     [Fact]
+    public void BuildArgumentList_FlexporterIgBulk_EmittedBeforePositionalState()
+    {
+        // (A5+A8) -fm/-ig are Synthea flag-form; --exporter.fhir.bulk_data
+        // is a property. All three must precede the positional state arg
+        // (and thus the passthru tail), matching how the existing flag
+        // block is laid out.
+        var args = new SyntheaArgs(
+            State: "OH", City: null, Gender: null, AgeRange: null,
+            ModuleDir: null, Modules: null, Population: null, Seed: null,
+            Config: null, Zip: null, FhirVersion: null,
+            InitialSnapshot: null, UpdatedSnapshot: null, DaysForward: null,
+            Formats: System.Array.Empty<string>(),
+            AdditionalFormats: System.Array.Empty<string>(),
+            Passthru: System.Array.Empty<string>(),
+            FlexporterMapping: new FileInfo("/tmp/map.yaml"),
+            IgDir: new DirectoryInfo("/tmp/ig"),
+            BulkData: true);
+
+        var list = RunCommand.BuildArgumentList(args);
+        var fmIdx = list.IndexOf("-fm");
+        var igIdx = list.IndexOf("-ig");
+        var bulkIdx = list.IndexOf("--exporter.fhir.bulk_data=true");
+        var stateIdx = list.IndexOf("OH");
+        Assert.True(fmIdx >= 0 && igIdx >= 0 && bulkIdx >= 0 && stateIdx >= 0);
+        Assert.True(fmIdx < stateIdx, $"-fm ({fmIdx}) must precede state ({stateIdx})");
+        Assert.True(igIdx < stateIdx, $"-ig ({igIdx}) must precede state ({stateIdx})");
+        Assert.True(bulkIdx < stateIdx, $"bulk_data ({bulkIdx}) must precede state ({stateIdx})");
+        // Paths must be absolute (Path.GetFullPath was applied).
+        Assert.Equal(Path.GetFullPath("/tmp/map.yaml"), list[fmIdx + 1]);
+        Assert.Equal(Path.GetFullPath("/tmp/ig"), list[igIdx + 1]);
+    }
+
+    [Fact]
+    public void BuildArgumentList_NoFlexporterIgBulk_NoneEmitted()
+    {
+        var args = new SyntheaArgs(
+            State: null, City: null, Gender: null, AgeRange: null,
+            ModuleDir: null, Modules: null, Population: null, Seed: null,
+            Config: null, Zip: null, FhirVersion: null,
+            InitialSnapshot: null, UpdatedSnapshot: null, DaysForward: null,
+            Formats: System.Array.Empty<string>(),
+            AdditionalFormats: System.Array.Empty<string>(),
+            Passthru: System.Array.Empty<string>());
+
+        var list = RunCommand.BuildArgumentList(args);
+        Assert.DoesNotContain("-fm", list);
+        Assert.DoesNotContain("-ig", list);
+        Assert.DoesNotContain("--exporter.fhir.bulk_data=true", list);
+    }
+
+    [Fact]
     public void CreateProcessStartInfo_UsesWorkingDirectoryAndJar()
     {
         var tmpDir = Path.Combine(Path.GetTempPath(), "synthea-test-tmp");
