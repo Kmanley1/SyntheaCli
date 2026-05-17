@@ -275,6 +275,20 @@ dotnet test tests/Synthea.Cli.UnitTests/Synthea.Cli.UnitTests.csproj `
 
 Coverage gate (enforced in CI): **≥ 80% line, ≥ 75% branch**. Current baseline: 86.96% line / 82.84% branch.
 
+The unit suite includes golden-file `--help` tests that fail the build on accidental CLI-surface drift. When you intentionally change an option name, description, or add a new subcommand, regenerate the goldens in one shot:
+
+```powershell
+$env:SYNTHEA_CLI_REGENERATE_HELP_GOLDENS = "1"
+dotnet test tests/Synthea.Cli.UnitTests --filter HelpSurfaceTests
+Remove-Item env:SYNTHEA_CLI_REGENERATE_HELP_GOLDENS
+```
+
+```bash
+SYNTHEA_CLI_REGENERATE_HELP_GOLDENS=1 dotnet test tests/Synthea.Cli.UnitTests --filter HelpSurfaceTests
+```
+
+The regenerated files land in `tests/Synthea.Cli.UnitTests/golden/`; review the diff and commit them with the feature.
+
 ### Cross-platform CI
 
 GitHub Actions matrix runs on `ubuntu-latest` and `windows-latest` for every PR. CodeQL scans on every push. Dependabot keeps NuGet and GitHub Actions packages current.

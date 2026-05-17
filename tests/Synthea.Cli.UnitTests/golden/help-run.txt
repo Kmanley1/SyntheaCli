@@ -1,0 +1,60 @@
+Description:
+  Generate synthetic health records.
+  
+  Examples:
+    synthea run -o ./out -p 100 --state OH --add-format CSV
+    synthea run -o ./out -p 5 --state Ohio --gender F --age-range 30-40
+    synthea run -o ./out -p 50000 --us-core-version 7 --fhir-version R5
+    synthea run -o ./out -p 1000 --seed 42 --clinician-seed 7 --single-person-seed 9
+    synthea run -o ./out --jar ~/synthea.jar --dry-run
+
+Usage:
+  Synthea.Cli run [<args>...] [options] [[--] <additional arguments>...]]
+
+Arguments:
+  <args>  Any other arguments forwarded unchanged to synthea.jar
+
+Options:
+  -o, --output <output> (REQUIRED)           Directory where Synthea will write its output
+  --state <state>                            State name (e.g. 'Ohio') or two-letter USPS code (e.g. 'OH'). 2-letter codes are converted to the full name automatically. Rejects unknown names with a suggestion.
+  --city <city>                              City name (optional second positional arg after state)
+  --gender <gender>                          Patient gender filter (M or F)
+  --age-range <age-range>                    Age range filter as min-max
+  --module-dir <module-dir>                  Directory of custom modules
+  --module <module>                          Specific disease modules
+  -p, --population <population>              Number of patients to generate
+  -s, --seed <seed>                          Random seed for deterministic output
+  -c, --config <config>                      Path to Synthea configuration file
+  --zip <zip>                                ZIP code (requires --state)
+  --fhir-version <fhir-version>              FHIR version (STU3, R4, or R5)
+  --initial-snapshot <initial-snapshot>      Path to initial snapshot to load (-i)
+  --updated-snapshot <updated-snapshot>      Path where updated snapshot will be written (-u)
+  --days-forward <days-forward>              Advance time from snapshot by N days (-t)
+  --format <format>                          Output formats to generate (FHIR, CSV, CCDA, BULKFHIR, CPCDS). Exclusive: enables only the named formats and disables all others. Use --add-format to extend Synthea defaults instead.
+  --add-format <add-format>                  Additive format to enable in addition to Synthea defaults (FHIR, CSV, CCDA, BULKFHIR, CPCDS). Repeatable. Does not disable any other format; see --format for exclusive semantics.
+  --dry-run, --print-args                    Print the java command line that would be run, then exit without running it. Useful for debugging or scripting. Does not download the JAR.
+  --jar <jar>                                Path to a Synthea JAR to use directly. Skips the GitHub download. Falls back to SYNTHEA_CLI_JAR_PATH env var, then ~/.synthea-cli/config.json.
+  --insist-checksum                          Fail the run if the upstream release does not publish a .sha256 asset.
+  --reference-date <reference-date>          Reference date (ISO YYYY-MM-DD). Maps to Synthea -r YYYYMMDD.
+  --end-date <end-date>                      Simulation end date (ISO YYYY-MM-DD). Maps to Synthea -e YYYYMMDD. Requires --allow-future-end if the date is beyond today.
+  --allow-future-end                         Permit --end-date beyond today (Synthea -E).
+  --clinician-seed <clinician-seed>          Random seed for clinician generation (Synthea -cs N).
+  --single-person-seed <single-person-seed>  Random seed for single-person generation (Synthea -ps N).
+  --overflow                                 Allow Synthea's overflow generation (-o true). Off by default; turn on for full-fidelity reruns of past results.
+  --property <property>                      Set a Synthea property as KEY=VALUE (repeatable). Emitted as --KEY=VALUE. Use for properties without a first-class flag.
+  --us-core-version <us-core-version>        US Core IG version to apply to FHIR export. Allowed: 3.1.1, 4, 5, 6, 7. Implies --exporter.fhir.use_us_core_ig=true.
+  --flexporter-mapping <flexporter-mapping>  Path to a Flexporter mapping file (.yaml/.json). Maps to Synthea -fm <path>.
+  --ig-dir <ig-dir>                          Directory of FHIR Implementation Guide resources. Maps to Synthea -ig <dir>.
+  --bulk-data                                Emit FHIR resources as bulk-data NDJSON (--exporter.fhir.bulk_data=true).
+  --java-heap <java-heap>                    Override the auto-sized JVM heap (e.g. '4g' or '1024m'). Defaults: 2g for >=1k, 4g for >=10k, 8g for >=100k, 16g for >=1M; no flag for <1k (use JVM default).
+  --progress                                 Print a periodic 'Generated X/Y patients (Z%)…' status line to stderr while Synthea runs. Off by default; opt in for long runs.
+  -?, -h, --help                             Show help and usage information
+  --refresh                                  Ignore cached JAR and download the newest release
+  --java-path <java-path>                    Full path to the Java executable (defaults to 'java' on PATH)
+  --verbose                                  Enable debug-level logging
+  --quiet                                    Suppress info logs; show only warnings and errors
+  --skip-jdk-check                           Bypass the Java 17+ preflight check. Use only for custom JREs whose -version output we can't parse; otherwise fix Java first.
+
+Additional Arguments:
+  Arguments passed to the application that is being run.
+
