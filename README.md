@@ -26,6 +26,46 @@ If you're a healthcare data engineer, integration tester, or anyone who needs re
 
 ---
 
+## What's new in 0.5.0
+
+Seventeen feature PRs shipped on top of v0.4.0 (commit `575e8fd`). Grouped by area:
+
+**Reproducibility & FHIR exporter coverage**
+
+- `--reference-date`, `--end-date`, `--allow-future-end`, `--clinician-seed`, `--single-person-seed`, `--overflow` for byte-for-byte reproducible runs (A1, A2, A3 — [#72](https://github.com/Kmanley1/SyntheaCli/pull/72))
+- `--property KEY=VALUE` (repeatable) for arbitrary Synthea property passthrough (A6 — [#73](https://github.com/Kmanley1/SyntheaCli/pull/73))
+- `--us-core-version 3.1.1|4|5|6|7` and `--fhir-version R5` (A9, A10 — [#74](https://github.com/Kmanley1/SyntheaCli/pull/74))
+- `--flexporter-mapping`, `--ig-dir`, `--bulk-data` for FHIR Bulk Data + custom IGs (A5, A8 — [#75](https://github.com/Kmanley1/SyntheaCli/pull/75))
+
+**New subcommands**
+
+- `synthea doctor` — environment check (Java version, cache writeability, JAR age, config validity, GitHub reachability, disk space) with `[OK]/[WARN]/[FAIL]` table and proper exit codes (B6 — [#76](https://github.com/Kmanley1/SyntheaCli/pull/76))
+- `synthea modules list` / `synthea modules describe <name>` — introspect the cached JAR for available disease modules (B4 — [#77](https://github.com/Kmanley1/SyntheaCli/pull/77))
+
+**Quality-of-life & correctness**
+
+- Fail fast on Java < 17 with a clear "install OpenJDK 17 LTS" message; `--skip-jdk-check` escape hatch (C2 — [#68](https://github.com/Kmanley1/SyntheaCli/pull/68))
+- Exit non-zero with a clean error on malformed config JSON (no more silent fallback) (C7 — [#69](https://github.com/Kmanley1/SyntheaCli/pull/69))
+- Surface Synthea stderr stack traces with remediation hints for known errors (OOM, old Java, missing geography, etc.) (C6 — [#70](https://github.com/Kmanley1/SyntheaCli/pull/70))
+- `--state` preflight against the known state-name set with "did you mean?" suggestions (C1 — [#71](https://github.com/Kmanley1/SyntheaCli/pull/71))
+- Auto-size `-Xmx` based on `-p` with `--java-heap` override (C3 — [#78](https://github.com/Kmanley1/SyntheaCli/pull/78))
+- OS-correct module path separator + automatic `exporter.subfolders_by_id_substring=true` for large runs (C4, C5 — [#79](https://github.com/Kmanley1/SyntheaCli/pull/79))
+
+**CLI polish**
+
+- `synthea --version` shows CLI + JAR versions; `run --help` includes worked examples; `--dry-run` aliases `--print-args` (D1, D4, D8 — [#80](https://github.com/Kmanley1/SyntheaCli/pull/80))
+- `--progress` opt-in periodic status while Synthea generates (D2 — [#81](https://github.com/Kmanley1/SyntheaCli/pull/81))
+
+**Engineering**
+
+- Golden-file `--help` stability tests catch accidental CLI-surface drift (F3 — [#82](https://github.com/Kmanley1/SyntheaCli/pull/82))
+- NuGet metadata polish: icon, project URL, refined tags (F5 — [#83](https://github.com/Kmanley1/SyntheaCli/pull/83))
+- Release notes auto-generated from Conventional Commits on tag push (F4 — [#84](https://github.com/Kmanley1/SyntheaCli/pull/84))
+
+Breaking from v0.4.x: malformed config JSON now exits non-zero (was silent fallback to defaults); Java < 17 now exits non-zero (was warning).
+
+---
+
 ## Table of contents
 
 - [Quick start](#quick-start)
