@@ -22,7 +22,18 @@ internal static class RunCommand
     internal static Command Build(IProcessRunner runner, IJarSource jarSource, IJavaDetector javaDetector,
         Option<bool> refreshOpt, Option<string?> javaOpt, Option<bool> skipJdkCheckOpt)
     {
-        var runCmd = new Command("run", "Generate synthetic health records");
+        // D4: the description doubles as the long-form help text. System.CommandLine
+        // renders this verbatim under the synopsis, so embedding an
+        // "Examples:" block here is the lightest-weight way to put recipes
+        // in front of users at the point of use.
+        var runCmd = new Command("run",
+            "Generate synthetic health records.\n\n" +
+            "Examples:\n" +
+            "  synthea run -o ./out -p 100 --state OH --add-format CSV\n" +
+            "  synthea run -o ./out -p 5 --state Ohio --gender F --age-range 30-40\n" +
+            "  synthea run -o ./out -p 50000 --us-core-version 7 --fhir-version R5\n" +
+            "  synthea run -o ./out -p 1000 --seed 42 --clinician-seed 7 --single-person-seed 9\n" +
+            "  synthea run -o ./out --jar ~/synthea.jar --dry-run");
 
         var outputOpt = new Option<DirectoryInfo>("--output", "-o")
         {
@@ -46,7 +57,10 @@ internal static class RunCommand
         var daysForwardOpt = CreateDaysForwardOption();
         var formatOpt = CreateFormatOption();
         var addFormatOpt = CreateAddFormatOption();
-        var printArgsOpt = new Option<bool>("--print-args")
+        // D8: --dry-run is the canonical user-facing name (the usual CLI
+        // idiom); --print-args stays as an alias so existing scripts and
+        // docs from earlier releases keep working.
+        var printArgsOpt = new Option<bool>("--dry-run", "--print-args")
         {
             Description = "Print the java command line that would be run, then exit without running it. " +
                           "Useful for debugging or scripting. Does not download the JAR."

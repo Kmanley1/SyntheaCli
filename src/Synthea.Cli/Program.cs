@@ -1,9 +1,12 @@
 using System;
 using System.CommandLine;
 using System.IO;
+using System.IO.Compression;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -129,8 +132,84 @@ internal static class Program
         root.Subcommands.Add(DoctorCommand.Build(jarSource, javaDetector, fileSystem, gitHubProbe, diskProbe, javaOpt));
         root.Subcommands.Add(ModulesCommand.Build(jarSource));
 
+        // D1: intercept --version before the framework's stock handler so we
+        // can render a two-line report including the cached JAR's version
+        // and date. Only short-circuits the bare `synthea --version` form;
+        // `synthea --version --help` still falls through to --help.
+        if (args.Length > 0 && args[0] == "--version")
+        {
+            Console.WriteLine(BuildVersionReport(jarSource));
+            return 0;
+        }
+
         if (args.Length == 0) args = new[] { "--help" };
         return await root.Parse(args).InvokeAsync();
+    }
+
+    // D1: returns the multi-line version report. Public + ServiceLocator-
+    // free for testability — pass any IJarSource (real or stubbed).
+    internal static string BuildVersionReport(IJarSource jarSource)
+    {
+        var sb = new StringBuilder();
+        sb.Append("synthea-cli ").Append(GetCliVersion()).AppendLine();
+        var cached = SafeFindCachedJar(jarSource);
+        if (cached is null)
+        {
+            sb.Append("synthea-jar (not yet cached — run `synthea run` once to download)");
+        }
+        else
+        {
+            var jarVer = TryReadJarVersion(cached.FullName) ?? "version unavailable";
+            sb.Append("synthea-jar ").Append(jarVer)
+              .Append(" (cached ").Append(cached.LastWriteTimeUtc.ToString("yyyy-MM-dd")).Append(')');
+        }
+        return sb.ToString();
+    }
+
+    private static FileInfo? SafeFindCachedJar(IJarSource jarSource)
+    {
+        try { return jarSource.TryFindCachedJar(); }
+        catch (IOException) { return null; }
+        catch (UnauthorizedAccessException) { return null; }
+    }
+
+    internal static string GetCliVersion()
+    {
+        var asm = typeof(Program).Assembly;
+        var info = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        return info ?? asm.GetName().Version?.ToString() ?? "unknown";
+    }
+
+    // Cheap MANIFEST.MF read. Synthea's JAR puts Implementation-Version in
+    // META-INF/MANIFEST.MF; if not present, fall back to a filename-shape
+    // guess (e.g. synthea-3.3.0-with-dependencies.jar). Returns null if we
+    // can't determine anything.
+    internal static string? TryReadJarVersion(string jarPath)
+    {
+        try
+        {
+            using var archive = ZipFile.OpenRead(jarPath);
+            var manifest = archive.GetEntry("META-INF/MANIFEST.MF");
+            if (manifest is not null)
+            {
+                using var stream = manifest.Open();
+                using var reader = new StreamReader(stream);
+                string? line;
+                while ((line = reader.ReadLine()) is not null)
+                {
+                    if (line.StartsWith("Implementation-Version:", StringComparison.OrdinalIgnoreCase))
+                        return line.Substring("Implementation-Version:".Length).Trim();
+                }
+            }
+        }
+        catch (IOException) { /* fall through */ }
+        catch (InvalidDataException) { /* not a valid zip */ }
+
+        // Filename fallback: synthea-X.Y.Z-with-dependencies.jar
+        var name = Path.GetFileName(jarPath);
+        var match = System.Text.RegularExpressions.Regex.Match(
+            name, @"synthea-(?<v>\d+\.\d+\.\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        return match.Success ? match.Groups["v"].Value : null;
     }
 
     internal static LogLevel DetectLogLevel(string[] args)
