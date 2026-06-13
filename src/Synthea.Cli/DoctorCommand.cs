@@ -46,7 +46,8 @@ internal static class DoctorCommand
                 gitHubProbe: gitHubProbe,
                 diskProbe: diskProbe,
                 configPath: null,
-                clock: null);
+                clock: null,
+                overrideJar: RunCommand.ResolveOverrideJar());
 
             var results = new List<DoctorCheckResult>(checks.Count);
             foreach (var check in checks)
@@ -67,14 +68,15 @@ internal static class DoctorCommand
         IGitHubReachabilityProbe gitHubProbe,
         IDiskSpaceProbe diskProbe,
         string? configPath,
-        Func<DateTime>? clock)
+        Func<DateTime>? clock,
+        FileInfo? overrideJar = null)
     {
         var now = clock ?? (() => DateTime.UtcNow);
         return new IDoctorCheck[]
         {
             new JavaCheck(javaPath, javaDetector),
             new CacheDirCheck(jarSource, fileSystem),
-            new CachedJarCheck(jarSource, now),
+            new CachedJarCheck(jarSource, now, overrideJar),
             new ConfigCheck(configPath),
             new GitHubCheck(gitHubProbe),
             new DiskSpaceCheck(jarSource, diskProbe),
@@ -174,14 +176,26 @@ internal static class DoctorCommand
     {
         private readonly IJarSource _jarSource;
         private readonly Func<DateTime> _now;
-        public CachedJarCheck(IJarSource jarSource, Func<DateTime> now)
+        private readonly FileInfo? _overrideJar;
+        public CachedJarCheck(IJarSource jarSource, Func<DateTime> now, FileInfo? overrideJar = null)
         {
             _jarSource = jarSource;
             _now = now;
+            _overrideJar = overrideJar;
         }
 
         public Task<DoctorCheckResult> RunAsync(CancellationToken cancelToken)
         {
+            // A --jar/SYNTHEA_CLI_JAR_PATH/config JAR is used directly and never
+            // ages out of the download cache, so report it as OK rather than
+            // claiming nothing is cached (the Docker image bakes one this way).
+            if (_overrideJar is not null)
+            {
+                var overrideMb = _overrideJar.Length / (1024.0 * 1024.0);
+                return Task.FromResult(new DoctorCheckResult(
+                    "Cached JAR", DoctorSeverity.Ok,
+                    $"using {_overrideJar.FullName} ({overrideMb:0} MB, via --jar/SYNTHEA_CLI_JAR_PATH/config)"));
+            }
             var jar = _jarSource.TryFindCachedJar();
             if (jar is null)
                 return Task.FromResult(new DoctorCheckResult(

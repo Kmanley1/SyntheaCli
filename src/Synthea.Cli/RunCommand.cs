@@ -654,6 +654,20 @@ internal static class RunCommand
         return new JarOverrides(jarPath, token, insist);
     }
 
+    // `synthea --version` and `synthea doctor` report the *effective* JAR but
+    // have no --jar flag, so they resolve env SYNTHEA_CLI_JAR_PATH > config
+    // jarPath (the same precedence as `run`). Returns the file only if it
+    // exists, so a baked/configured JAR (e.g. the Docker image's
+    // SYNTHEA_CLI_JAR_PATH) is reported instead of "not cached".
+    internal static FileInfo? ResolveOverrideJar()
+        => ResolveOverrideJar(CliConfig.Load(), Environment.GetEnvironmentVariable);
+
+    internal static FileInfo? ResolveOverrideJar(CliConfig config, Func<string, string?> envGetter)
+    {
+        var path = CliConfig.Resolve(null, "SYNTHEA_CLI_JAR_PATH", config.JarPath, envGetter);
+        return !string.IsNullOrEmpty(path) && File.Exists(path) ? new FileInfo(path) : null;
+    }
+
     // ----- Option-validator helpers ---------------------------------------
     //
     // Every Create*Option method below shares the same pattern: "if a value

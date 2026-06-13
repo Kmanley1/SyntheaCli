@@ -722,6 +722,20 @@ public class ProgramHandlerTests : IDisposable
         Assert.Contains("cached ", report);
     }
 
+    // Container UX fix: a baked/configured JAR (e.g. the Docker image's
+    // SYNTHEA_CLI_JAR_PATH) is reported even when the download cache is empty.
+    [Fact]
+    public void BuildVersionReport_WithOverrideJar_ReportsConfiguredPath()
+    {
+        var jarPath = Path.Combine(_tempDir, "baked-synthea-with-dependencies.jar");
+        File.WriteAllBytes(jarPath, new byte[1024]);
+        var report = Program.BuildVersionReport(new NoJarStub(), new FileInfo(jarPath));
+        Assert.Contains("synthea-cli", report);
+        Assert.Contains("configured:", report);
+        Assert.Contains(jarPath, report);
+        Assert.DoesNotContain("not yet cached", report);
+    }
+
     [Fact]
     public async Task VersionFlag_ShortCircuitsBeforeFrameworkHandler()
     {

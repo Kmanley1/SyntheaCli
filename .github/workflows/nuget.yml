@@ -25,7 +25,9 @@ jobs:
           fi
       - name: Pack
         run: |
+          # /p:Version drives PackageVersion AND the assembly InformationalVersion,
+          # so the published package and `synthea --version` always agree.
           dotnet pack src/Synthea.Cli/Synthea.Cli.csproj -c Release -o artifacts \
-            /p:ContinuousIntegrationBuild=true /p:PackageVersion=${{ env.VERSION }}
+            /p:ContinuousIntegrationBuild=true /p:Version=${{ env.VERSION }}
       - name: Push
         run: dotnet nuget push artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json

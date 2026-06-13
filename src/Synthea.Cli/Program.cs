@@ -149,19 +149,29 @@ internal static class Program
     // D1: returns the multi-line version report. Public + ServiceLocator-
     // free for testability — pass any IJarSource (real or stubbed).
     internal static string BuildVersionReport(IJarSource jarSource)
+        => BuildVersionReport(jarSource, RunCommand.ResolveOverrideJar());
+
+    // overrideJar: an explicit JAR from --jar/SYNTHEA_CLI_JAR_PATH/config that
+    // takes precedence over the download cache (so a baked JAR is reported, not
+    // "not yet cached"). Separate overload keeps the report unit-testable
+    // without touching process env. (D1 + container UX fix)
+    internal static string BuildVersionReport(IJarSource jarSource, FileInfo? overrideJar)
     {
         var sb = new StringBuilder();
         sb.Append("synthea-cli ").Append(GetCliVersion()).AppendLine();
-        var cached = SafeFindCachedJar(jarSource);
-        if (cached is null)
+        var jar = overrideJar ?? SafeFindCachedJar(jarSource);
+        if (jar is null)
         {
             sb.Append("synthea-jar (not yet cached — run `synthea run` once to download)");
         }
         else
         {
-            var jarVer = TryReadJarVersion(cached.FullName) ?? "version unavailable";
-            sb.Append("synthea-jar ").Append(jarVer)
-              .Append(" (cached ").Append(cached.LastWriteTimeUtc.ToString("yyyy-MM-dd")).Append(')');
+            var jarVer = TryReadJarVersion(jar.FullName) ?? "version unavailable";
+            sb.Append("synthea-jar ").Append(jarVer);
+            if (overrideJar is not null)
+                sb.Append(" (configured: ").Append(jar.FullName).Append(')');
+            else
+                sb.Append(" (cached ").Append(jar.LastWriteTimeUtc.ToString("yyyy-MM-dd")).Append(')');
         }
         return sb.ToString();
     }

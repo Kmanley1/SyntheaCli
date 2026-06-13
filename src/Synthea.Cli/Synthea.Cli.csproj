@@ -9,7 +9,13 @@
     <PackageId>synthea-cli</PackageId>
     <ToolCommandName>synthea</ToolCommandName>
     <DotNetCliToolAliases>syn</DotNetCliToolAliases>
-    <PackageVersion>0.5.0</PackageVersion>
+    <!-- Single version source: drives PackageVersion, AssemblyVersion, and the
+         InformationalVersion the CLI reports for its version flag. CI passes
+         /p:Version=<tag> at pack time (see .github/workflows/nuget.yml). -->
+    <Version>0.5.0</Version>
+    <!-- Keep the reported version a clean semver (no +<git-sha>) and identical
+         across build contexts; the Docker build has no .git to read a sha from. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Description>CLI wrapper around MITRE Synthea synthetic patient generator. Downloads the latest Synthea release, manages a local JAR cache, and exposes Synthea's generation flags as first-class .NET CLI options.</Description>
     <!-- Tags drive NuGet search relevance. Order matters: most-specific
          to most-general so query tokenization favors the right hits. -->

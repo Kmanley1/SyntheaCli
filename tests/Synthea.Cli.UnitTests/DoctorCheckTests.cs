@@ -82,6 +82,20 @@ public class DoctorCheckTests : IDisposable
         Assert.Contains("no JAR cached", r.Message);
     }
 
+    // Container UX fix: an override JAR (--jar/SYNTHEA_CLI_JAR_PATH/config) is
+    // used directly, so doctor reports OK even when the download cache is empty.
+    [Fact]
+    public async Task CachedJarCheck_OverrideJar_ReturnsOkWithPath()
+    {
+        var jarPath = Path.Combine(_tempDir, "baked.jar");
+        File.WriteAllBytes(jarPath, new byte[2 * 1024 * 1024]);
+        var jar = new StubJarSource(_tempDir, cachedJar: null);
+        var r = await new DoctorCommand.CachedJarCheck(jar, () => DateTime.UtcNow, new FileInfo(jarPath)).RunAsync(default);
+        Assert.Equal(DoctorSeverity.Ok, r.Severity);
+        Assert.Contains(jarPath, r.Message);
+        Assert.Contains("SYNTHEA_CLI_JAR_PATH", r.Message);
+    }
+
     [Fact]
     public async Task CachedJarCheck_Fresh_ReturnsOk()
     {
