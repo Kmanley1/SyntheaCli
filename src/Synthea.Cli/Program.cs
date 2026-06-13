@@ -35,13 +35,19 @@ internal static class Program
     internal static ServiceProvider BuildDefaultServices(LogLevel minimumLevel = LogLevel.Information)
     {
         var sc = new ServiceCollection();
-        sc.AddLogging(b => b
-            .SetMinimumLevel(minimumLevel)
-            .AddSimpleConsole(o =>
+        sc.AddLogging(b =>
+        {
+            b.SetMinimumLevel(minimumLevel);
+            b.AddSimpleConsole(o =>
             {
                 o.SingleLine = true;
                 o.TimestampFormat = "HH:mm:ss ";
-            }));
+            });
+            // Route logs to stderr so stdout stays a clean data channel
+            // (e.g. `run --dry-run | sh`, or piping Synthea's own output).
+            b.Services.Configure<Microsoft.Extensions.Logging.Console.ConsoleLoggerOptions>(
+                o => o.LogToStandardErrorThreshold = LogLevel.Trace);
+        });
         sc.AddSingleton<IProcessRunner, DefaultProcessRunner>();
         sc.AddSingleton<IJavaDetector, JavaDetector>();
         sc.AddSingleton<IJarSource>(sp => new JarManager(

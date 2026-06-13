@@ -11,6 +11,21 @@ Conventional Commits (`tools/extract-release-notes.ps1`).
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-06-13
+
+### Fixed
+- Logs and wrapper status lines (download progress, "Using…") now write to **stderr**, keeping stdout a
+  clean data channel for piping (e.g. `run --dry-run | sh`).
+- Exit-code documentation reconciled with actual behavior — "Java not found" is `3`, "Java older than 17"
+  is `1` (the README/Architecture tables were wrong).
+
+### Changed
+- The NuGet publish workflow now **gates on the unit tests passing** for the tagged commit and pushes with
+  `--skip-duplicate`.
+
+### Security
+- The air-gapped Docker image now **verifies the pinned Synthea JAR against a known SHA-256** after download.
+
 ## [1.0.0] - 2026-06-13
 
 First stable release. From here, the CLI flag surface, exit codes, and `config.json` keys form a

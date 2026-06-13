@@ -23,6 +23,8 @@ jobs:
 
 
           fi
+      - name: Test (gate the publish on a green build for this ref)
+        run: dotnet test tests/Synthea.Cli.UnitTests/Synthea.Cli.UnitTests.csproj -c Release --filter "Category!=Integration"
       - name: Pack
         run: |
           # /p:Version drives PackageVersion AND the assembly InformationalVersion,
@@ -30,4 +32,5 @@ jobs:
           dotnet pack src/Synthea.Cli/Synthea.Cli.csproj -c Release -o artifacts \
             /p:ContinuousIntegrationBuild=true /p:Version=${{ env.VERSION }}
       - name: Push
-        run: dotnet nuget push artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+        # --skip-duplicate: a re-pushed/corrected tag won't hard-fail on an existing version.
+        run: dotnet nuget push artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate

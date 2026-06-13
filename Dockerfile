@@ -26,6 +26,10 @@ ARG JRE_IMAGE=eclipse-temurin:17-jre-jammy
 # reproducible: GitHub's /releases/latest points at the MUTABLE
 # `master-branch-latest` rolling build. Override per build with --build-arg.
 ARG SYNTHEA_VERSION=v4.0.0
+# SHA-256 of the pinned v4.0.0 JAR, verified after download (supply-chain
+# integrity). The check auto-skips if SYNTHEA_VERSION is changed, since this
+# hash no longer applies — pin a matching hash to re-enable verification.
+ARG SYNTHEA_JAR_SHA256=ed43c20ad40ba5c3bc724503a5af032715fe3c491620b766148e7c2361e6ecc1
 
 # ---- Stage 1: publish a self-contained linux-x64 build of the CLI ----
 FROM ${DOTNET_SDK_IMAGE} AS build
@@ -49,6 +53,7 @@ RUN dotnet publish src/Synthea.Cli/Synthea.Cli.csproj \
 # ---- Stage 2: fetch the (pinned) Synthea JAR ----
 FROM ${DOTNET_SDK_IMAGE} AS jar
 ARG SYNTHEA_VERSION
+ARG SYNTHEA_JAR_SHA256
 RUN apt-get update \
  && apt-get install -y --no-install-recommends curl ca-certificates \
  && rm -rf /var/lib/apt/lists/*
@@ -65,7 +70,12 @@ RUN set -eux; \
     curl -fsSL --retry 3 --retry-delay 2 "$url" -o /opt/synthea/synthea-with-dependencies.jar; \
     # Guard against a 200-with-HTML rate-limit/abuse interstitial: the real JAR
     # is >100 MB, so anything under 10 MB is a failed/corrupt download.
-    test "$(stat -c%s /opt/synthea/synthea-with-dependencies.jar)" -gt 10000000
+    test "$(stat -c%s /opt/synthea/synthea-with-dependencies.jar)" -gt 10000000; \
+    # Verify the pinned hash for the default v4.0.0 release (tamper/corruption
+    # protection). A different SYNTHEA_VERSION opts out — this hash no longer applies.
+    if [ "$SYNTHEA_VERSION" = "v4.0.0" ] && [ -n "$SYNTHEA_JAR_SHA256" ]; then \
+        echo "${SYNTHEA_JAR_SHA256}  /opt/synthea/synthea-with-dependencies.jar" | sha256sum -c -; \
+    fi
 
 # ---- Stage 3: minimal runtime — Java (for Synthea) + CLI + baked JAR ----
 FROM ${JRE_IMAGE} AS runtime

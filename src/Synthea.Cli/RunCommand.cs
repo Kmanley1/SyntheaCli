@@ -216,18 +216,20 @@ internal static class RunCommand
 
             try
             {
-                var interactive = !Console.IsOutputRedirected;
-                if (!interactive) Console.WriteLine("Downloading Synthea JAR...");
+                // Wrapper status/progress go to stderr; stdout is reserved for
+                // Synthea's own output and --print-args data.
+                var interactive = !Console.IsErrorRedirected;
+                if (!interactive) Console.Error.WriteLine("Downloading Synthea JAR...");
                 var progress = new Progress<(long dl, long total)>(p =>
                 {
                     if (interactive)
-                        Console.Write($"\rDownloading Synthea {p.dl / 1_000_000}/{p.total / 1_000_000} MB…");
+                        Console.Error.Write($"\rDownloading Synthea {p.dl / 1_000_000}/{p.total / 1_000_000} MB…");
                 });
 
                 var jar = await jarSource.EnsureJarAsync(hosting.Refresh, progress, cancelToken, jarOverrides);
 
-                if (interactive) Console.WriteLine();
-                Console.WriteLine($"✓ Using {jar.Name}  ({jar.FullName})");
+                if (interactive) Console.Error.WriteLine();
+                Console.Error.WriteLine($"✓ Using {jar.Name}  ({jar.FullName})");
 
                 var psi = CreateProcessStartInfo(hosting, args, jar, heapOverride);
 

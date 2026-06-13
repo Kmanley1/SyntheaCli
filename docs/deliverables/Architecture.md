@@ -169,9 +169,9 @@ sequenceDiagram
 | Exit | When | Where |
 |------|------|-------|
 | `0` | Success; Synthea's own exit code is propagated when the JAR ran | top-level handler |
-| `1` | Argument validation error (state code, ZIP, gender, age range, format, …) | `System.CommandLine` validators |
+| `1` | Argument validation error (state, ZIP, gender, age range, format, …), Java older than 17, or malformed config | `System.CommandLine` validators / `RunCommand` |
 | `2` | Filesystem / I/O error (`IOException`) | `RunCommand` try/catch |
-| `3` | External-dependency error: GitHub unreachable, checksum mismatch, missing release asset, `--insist-checksum` with no `.sha256` | `RunCommand` try/catch |
+| `3` | External-dependency error: GitHub unreachable, checksum mismatch, missing release asset, `--insist-checksum` with no `.sha256`, **or Java not found** | `RunCommand` try/catch + Java preflight |
 | `4` | Unexpected `Exception` (catch-all) | `RunCommand` try/catch |
 | `130` | Cancelled by user (Ctrl+C); the child Java process is killed via `proc.Kill(entireProcessTree: true)` | cancellation registration |
 

@@ -26,9 +26,11 @@ If you're a healthcare data engineer, integration tester, or anyone who needs re
 
 ---
 
-## What's new in 0.5.0
+## What's new in 1.0.0
 
-Seventeen feature PRs shipped on top of v0.4.0. Grouped by area:
+**1.0.0 — first stable release.** A documented SemVer stability contract for the CLI surface (see [Stability & versioning](#stability--versioning) below), an air-gapped Docker image with a pinned Synthea engine, and `run -o <dir>` now writes output directly into `<dir>`.
+
+The v0.5.0 feature set (seventeen feature PRs on top of v0.4.0) carries forward, grouped by area:
 
 **Reproducibility & FHIR exporter coverage**
 
@@ -289,11 +291,14 @@ Four sources can supply JAR-management settings, in precedence order (earlier wi
 | Code | Meaning |
 |------|---------|
 | `0` | Success (Synthea's own exit code is propagated when the JAR runs) |
-| `1` | Argument validation error (invalid state, ZIP, gender, age range, …) |
+| `1` | Argument validation error (invalid state, ZIP, gender, age range, …), Java older than 17, or malformed config |
 | `2` | Filesystem / I/O error |
-| `3` | External-dependency error (GitHub unreachable, checksum mismatch, missing release asset) |
+| `3` | External-dependency error (GitHub unreachable, checksum mismatch, missing release asset) **or Java not found** |
 | `4` | Unexpected error (catch-all) |
 | `130` | Cancelled by user (Ctrl+C); the child Java process is terminated along with the CLI |
+
+> When the Synthea JAR itself runs and exits non-zero, **its** exit code is propagated (commonly `1`), so a
+> non-zero `1`–`4` can originate from this CLI *or* from Synthea — key off the printed `hint:` / stderr.
 
 ---
 
