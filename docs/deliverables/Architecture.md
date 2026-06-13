@@ -157,9 +157,9 @@ sequenceDiagram
         Jar->>GH: GET <.sha256 asset> (if present)
         Jar-->>Cli: FileInfo (newly cached)
     end
-    Cli->>Java: spawn (working dir = output)
+    Cli->>Java: spawn (--exporter.baseDirectory=<abs output dir>)
     Java-->>User: stdout / stderr (relayed)
-    Java-->>User: FHIR/CSV/CCDA/... files in ./out
+    Java-->>User: FHIR/CSV/CCDA/... files directly in the -o dir
 ```
 
 ---

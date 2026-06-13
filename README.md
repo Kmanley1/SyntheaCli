@@ -28,7 +28,7 @@ If you're a healthcare data engineer, integration tester, or anyone who needs re
 
 ## What's new in 0.5.0
 
-Seventeen feature PRs shipped on top of v0.4.0 (commit `575e8fd`). Grouped by area:
+Seventeen feature PRs shipped on top of v0.4.0. Grouped by area:
 
 **Reproducibility & FHIR exporter coverage**
 
@@ -169,16 +169,16 @@ docker pull ghcr.io/kmanley1/synthea-cli:latest
 
 # Generate 100 Ohio patients into ./out on the host.
 # -u matches the host user so the bind-mounted dir stays writable (the image
-# runs as a non-root user); Synthea writes under the mount's output/ subfolder.
+# runs as a non-root user).
 docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/out:/data" \
     ghcr.io/kmanley1/synthea-cli run -o /data -p 100 --state OH --add-format CSV
-# → results in ./out/output/fhir, ./out/output/csv, ...
+# → results in ./out/fhir, ./out/csv, ...
 ```
 
-The image sets `SYNTHEA_CLI_JAR_PATH` to the baked-in JAR, so `JarManager` never calls GitHub. To bake a specific Synthea release instead of the latest, build locally with the `SYNTHEA_VERSION` build arg:
+The image sets `SYNTHEA_CLI_JAR_PATH` to the baked-in JAR, so `JarManager` never calls GitHub. The published image bakes a **pinned** Synthea release (recorded in the `io.synthea.jar.version` image label and shown by `synthea --version`). To bake a different release, build locally with the `SYNTHEA_VERSION` build arg:
 
 ```bash
-docker build --build-arg SYNTHEA_VERSION=v3.3.0 -t synthea-cli:syn-3.3.0 .
+docker build --build-arg SYNTHEA_VERSION=v3.4.0 -t synthea-cli:syn-3.4.0 .
 ```
 
 ### Behind a corporate proxy + with a GitHub token
@@ -297,6 +297,24 @@ Four sources can supply JAR-management settings, in precedence order (earlier wi
 
 ---
 
+## Stability & versioning
+
+`synthea-cli` follows [Semantic Versioning](https://semver.org). From **1.0.0** onward, the following form the **public contract** — breaking changes to them bump the **major** version:
+
+- The documented command + flag surface of `run`, `cache`, `doctor`, and `modules` (as shown in `synthea --help`).
+- The [exit codes](#exit-codes) above.
+- The `~/.synthea-cli/config.json` keys (`jarPath`, `insistChecksum`, `gitHubToken`, `httpsProxy`).
+
+**Not** covered (may change in a minor/patch release):
+
+- MITRE Synthea's own behavior, output layout, and log formats — `synthea-cli` is a wrapper; the generation engine is version-pinned per release.
+- Anything passed straight to the JAR via `--property` or trailing args.
+- Internal diagnostic log lines and progress output.
+
+The golden `--help` tests fail CI on any unintended change to the public flag surface.
+
+---
+
 ## Architecture
 
 - **Container:** single .NET 10 process spawning `java -jar synthea-with-dependencies.jar`
@@ -324,7 +342,7 @@ dotnet run --project src/Synthea.Cli -- run -o ./out -p 5 --state OH
 ### Tests
 
 ```bash
-# Unit tests (fast; default; ~312 tests)
+# Unit tests (fast; default; ~316 tests)
 dotnet test --filter "Category!=Integration"
 
 # Integration tests (require Java on PATH; ~3 tests; ~30s)
@@ -388,7 +406,7 @@ SyntheaCli/
 │   ├─ ProcessHelpers.cs             # IProcessRunner / DefaultProcessRunner
 │   └─ Synthea.Cli.csproj
 ├─ tests/
-│   ├─ Synthea.Cli.UnitTests/        # 312 unit tests, full mocks
+│   ├─ Synthea.Cli.UnitTests/        # 316 unit tests, full mocks
 │   └─ Synthea.Cli.IntegrationTests/ # cross-platform end-to-end
 ├─ docs/
 │   ├─ deliverables/Architecture.md  # C4-style architecture

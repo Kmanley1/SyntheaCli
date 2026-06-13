@@ -13,13 +13,25 @@ Conventional Commits (`tools/extract-release-notes.ps1`).
 
 ### Added
 - **Air-gapped Docker image** — a container bundling a self-contained build of the CLI plus a
-  pinned Synthea JAR (wired via `SYNTHEA_CLI_JAR_PATH`), published to GHCR on `v*` tags. Builds
-  behind an SSL-inspecting proxy by trusting an optional corporate root CA from `certs/`.
+  **pinned** Synthea release (v4.0.0), wired via `SYNTHEA_CLI_JAR_PATH`, published to GHCR on `v*`
+  tags. The baked Synthea version is recorded in the `io.synthea.jar.version` image label and shown
+  by `synthea --version`. Builds behind an SSL-inspecting proxy by trusting an optional corporate
+  root CA from `certs/`. CI smoke-tests the image (generates a patient) before publishing.
+- **Stability / SemVer policy** documented in the README — from 1.0.0 the flag surface, exit codes,
+  and config keys are the public contract.
+
+### Changed
+- **Output now lands directly in the `-o <dir>` directory** (previously a nested `output/`
+  subfolder). The CLI passes Synthea an absolute `exporter.baseDirectory`, so `--output` means what
+  its help text says.
+- Container images now stamp the real CLI version into the binary, so `docker run … --version`
+  matches the image tag instead of reporting the source default.
 
 ### Fixed
 - `synthea --version` now reports the real package version instead of the `1.0.0` assembly default.
 - `synthea --version` and `synthea doctor` now recognize a `--jar` / `SYNTHEA_CLI_JAR_PATH` / config
-  JAR instead of reporting "no JAR cached".
+  JAR — and the baked Synthea version — instead of reporting "no JAR cached" / "version unavailable".
+- HTTP User-Agent now reflects the real CLI version (was a stale `Synthea.Cli/0.1`).
 
 ## [0.5.0] - 2026-05-17
 

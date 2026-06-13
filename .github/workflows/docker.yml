@@ -1,9 +1,9 @@
 name: Publish Docker image
 
-# Builds the air-gapped container image (self-contained CLI + baked Synthea JAR)
-# and pushes it to GitHub Container Registry. Fires on the same v* tags that
-# drive the NuGet publish, plus a manual trigger that lets you pin which
-# Synthea release gets baked in.
+# Builds the air-gapped container image (self-contained CLI + baked Synthea JAR),
+# smoke-tests it, and pushes it to GitHub Container Registry on v* tags. A manual
+# workflow_dispatch builds + smoke-tests only (no publish), so you can validate a
+# build without moving the published :latest.
 
 on:
   push:
@@ -36,6 +36,29 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Resolve build versions
+        id: ver
+        env:
+          SYNTHEA_PINNED: v4.0.0
+          # Via env (not inline ${{...}}) to avoid shell injection from the input.
+          SYNTHEA_INPUT: ${{ github.event.inputs.synthea_version }}
+        run: |
+          # CLI version: from the tag (strip leading v) on a tag push; dev otherwise.
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            echo "cli=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "cli=0.0.0-dev" >> "$GITHUB_OUTPUT"
+          fi
+          # Synthea release to bake: explicit dispatch input wins; tag builds use
+          # the pinned release (reproducible); other builds may use rolling latest.
+          if [ -n "$SYNTHEA_INPUT" ]; then
+            echo "synthea=$SYNTHEA_INPUT" >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            echo "synthea=$SYNTHEA_PINNED" >> "$GITHUB_OUTPUT"
+          else
+            echo "synthea=latest" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Derive image metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -46,12 +69,32 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
 
-      - name: Build and push
+      - name: Build image (load locally for the smoke test)
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          load: true
+          tags: synthea-cli:ci
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            SYNTHEA_VERSION=${{ github.event.inputs.synthea_version || 'latest' }}
+            VERSION=${{ steps.ver.outputs.cli }}
+            SYNTHEA_VERSION=${{ steps.ver.outputs.synthea }}
+
+      - name: Smoke test the image (must generate a patient before we publish)
+        run: |
+          set -euxo pipefail
+          docker run --rm synthea-cli:ci --version
+          docker run --rm synthea-cli:ci doctor
+          out="$RUNNER_TEMP/smoke"; mkdir -p "$out"; chmod 777 "$out"
+          docker run --rm -v "$out:/data" synthea-cli:ci run -o /data -p 1 --state OH
+          ls "$out"/fhir/*.json
+
+      - name: Push to GHCR
+        if: github.ref_type == 'tag'
+        run: |
+          set -euo pipefail
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            docker tag synthea-cli:ci "$tag"
+            docker push "$tag"
+          done <<< '${{ steps.meta.outputs.tags }}'

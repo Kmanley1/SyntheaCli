@@ -8,24 +8,30 @@
 #   2. A pinned Synthea "with-dependencies" JAR, wired in via the documented
 #      SYNTHEA_CLI_JAR_PATH override so JarManager never reaches out to GitHub.
 #
-# Build (latest Synthea JAR):
+# Build (bakes a pinned Synthea release by default):
 #   docker build -t synthea-cli .
-# Build pinned to a specific Synthea release:
-#   docker build --build-arg SYNTHEA_VERSION=v3.3.0 -t synthea-cli:syn-3.3.0 .
+# Build pinned to a different Synthea release (or the rolling "latest"):
+#   docker build --build-arg SYNTHEA_VERSION=v3.4.0 -t synthea-cli:syn-3.4.0 .
+# Stamp the CLI version (CI passes the release tag; defaults to 0.0.0 locally):
+#   docker build --build-arg VERSION=1.0.0 -t synthea-cli:1.0.0 .
 # Run (mount a host dir for output; --user keeps the bind mount writable and
-# matches the host owner — Synthea writes under <mount>/output/):
+# matches the host owner):
 #   docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/out:/data" \
-#       synthea-cli run -o /data -p 100 --state OH    # files land in ./out/output/
+#       synthea-cli run -o /data -p 100 --state OH    # files land in ./out/fhir, ...
 
 # Must be a Debian/Ubuntu-based SDK — the `jar` stage below uses apt-get.
 ARG DOTNET_SDK_IMAGE=mcr.microsoft.com/dotnet/sdk:10.0
 ARG JRE_IMAGE=eclipse-temurin:17-jre-jammy
-# Synthea release tag to bake, e.g. v3.3.0. "latest" resolves to the newest
-# upstream release at build time; the resulting image is immutable thereafter.
-ARG SYNTHEA_VERSION=latest
+# Pinned Synthea release tag to bake. Pin (not "latest") so the image is
+# reproducible: GitHub's /releases/latest points at the MUTABLE
+# `master-branch-latest` rolling build. Override per build with --build-arg.
+ARG SYNTHEA_VERSION=v4.0.0
 
 # ---- Stage 1: publish a self-contained linux-x64 build of the CLI ----
 FROM ${DOTNET_SDK_IMAGE} AS build
+# CLI version stamped into the binary so `synthea --version` matches the image
+# tag. CI passes the release tag; 0.0.0 marks a local/dev build.
+ARG VERSION=0.0.0
 # Optional: trust a corporate/proxy root CA (e.g. Zscaler) so HTTPS NuGet
 # restore works behind an SSL-inspecting proxy. ./certs has no .crt in clean
 # CI → no-op. Drop a PEM .crt there to enable it (see certs/README.md).
@@ -37,6 +43,7 @@ RUN dotnet restore src/Synthea.Cli/Synthea.Cli.csproj
 RUN dotnet publish src/Synthea.Cli/Synthea.Cli.csproj \
         -c Release -r linux-x64 --self-contained true \
         -p:PublishSingleFile=true -p:PackAsTool=false \
+        -p:Version=${VERSION} \
         -o /app
 
 # ---- Stage 2: fetch the (pinned) Synthea JAR ----
@@ -62,10 +69,12 @@ RUN set -eux; \
 
 # ---- Stage 3: minimal runtime — Java (for Synthea) + CLI + baked JAR ----
 FROM ${JRE_IMAGE} AS runtime
+ARG SYNTHEA_VERSION
 LABEL org.opencontainers.image.title="synthea-cli" \
       org.opencontainers.image.description="Air-gapped Synthea generator: self-contained .NET CLI + a baked Synthea JAR." \
       org.opencontainers.image.source="https://github.com/Kmanley1/SyntheaCli" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.licenses="MIT" \
+      io.synthea.jar.version="${SYNTHEA_VERSION}"
 
 # Self-contained .NET 10 apps need a handful of native libs to start and to do
 # TLS (the doctor reachability probe). The temurin jammy base pulls most in
@@ -81,7 +90,10 @@ COPY --from=jar /opt/synthea/synthea-with-dependencies.jar /opt/synthea/synthea-
 RUN ln -s /opt/synthea-cli/Synthea.Cli /usr/local/bin/synthea
 
 # JarManager.EnsureJarAsync short-circuits to this path — no GitHub call.
+# SYNTHEA_JAR_VERSION lets `synthea --version`/doctor report which Synthea
+# release is baked in (the JAR itself carries no clean version string).
 ENV SYNTHEA_CLI_JAR_PATH="/opt/synthea/synthea-with-dependencies.jar" \
+    SYNTHEA_JAR_VERSION="${SYNTHEA_VERSION}" \
     DOTNET_CLI_TELEMETRY_OPTOUT=1
 
 # Run as non-root; uid 1000 matches the common host user so bind-mounted

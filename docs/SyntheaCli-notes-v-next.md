@@ -31,20 +31,22 @@ the tool runs with zero network access.
 
 ### MUST
 - **Docker image (air-gapped).** Self-contained CLI + pinned Synthea JAR, published to GHCR on `v*`
-  tags. *Status: Dockerfile + `.github/workflows/docker.yml` landed 2026-06-13 (this session);
-  needs a real build + smoke test in CI before relying on it.*
+  tags. *Status: DONE 2026-06-13 — built + smoke-tested locally and on GHCR; `docker.yml` pins
+  Synthea v4.0.0 for tag builds, smoke-tests the image (doctor + `run -p 1`) before publishing, and
+  stamps the CLI + Synthea versions into the image.*
 - **Truthful release record.** CHANGELOG backfilled for 0.3.1/0.4.0/0.5.0 and the phantom `[1.0.0]`
   removed. *Status: done 2026-06-13.*
 - **A 1.0.0 release pass**: bump `PackageVersion`, tag `v1.0.0`, let the NuGet + release-notes +
   docker workflows fire, smoke-test the published artifacts.
 
 ### SHOULD
-- **Pin the baked Synthea JAR by digest** (not just "latest at build time") so the image is fully
-  reproducible, and label the image with the resolved Synthea version.
-- **Image smoke test in CI**: `docker run … doctor` + a tiny `run -p 1` to prove the baked JAR works
-  before push.
-- Decide the **SemVer support contract** for 1.0.0 (which CLI surface is "stable"; the golden-file
-  `--help` tests already guard drift).
+- ~~**Pin the baked Synthea JAR**~~ *DONE 2026-06-13* — pinned by release **tag** (v4.0.0), recorded
+  in the `io.synthea.jar.version` image label + `synthea --version`. (Digest/content-pinning remains
+  a narrower future option.)
+- ~~**Image smoke test in CI**~~ *DONE 2026-06-13* — `docker.yml` runs `doctor` + `run -p 1` and
+  asserts FHIR output before pushing.
+- ~~Decide the **SemVer support contract**~~ *DONE 2026-06-13* — documented in the README "Stability
+  & versioning" section (flag surface + exit codes + config keys are the 1.x contract).
 
 ### COULD
 - `ingest` / `validate` / `evolve` subcommands (carried from earlier planning; only if a concrete
@@ -69,12 +71,13 @@ intended work, reconstruct them here before treating them as a backlog. Best gue
 DI/test polish, additional subcommands, and docs/CI hardening — none obviously v1.0.0-blocking.
 
 ## Open questions
-- Pin strategy for the baked JAR: resolve "latest" → concrete tag at build (simple) vs. require an
-  explicit `SYNTHEA_VERSION` for releases (reproducible). *Leaning: require explicit pin for tagged
-  releases; allow "latest" only for `workflow_dispatch`.*
-- Does 1.0.0 imply a frozen config-file schema? If so, document the compatibility promise.
-- GHCR namespace is `ghcr.io/kmanley1/...` (lowercased). Confirm package visibility (public) after
-  first push.
+- ~~Pin strategy for the baked JAR~~ *RESOLVED 2026-06-13* — tag builds pin `SYNTHEA_VERSION=v4.0.0`;
+  `workflow_dispatch` may use "latest" and does not publish. Implemented in `docker.yml`.
+- ~~Config-file schema freeze~~ *RESOLVED* — the README "Stability & versioning" section names the
+  `config.json` keys as part of the 1.x contract.
+- ~~GHCR visibility~~ *CONFIRMED public* 2026-06-13 (anonymous pull works).
+- **Remaining for the release pass:** bump `<Version>` to 1.0.0, promote CHANGELOG `[Unreleased]` →
+  `[1.0.0]`, tag `v1.0.0` (which republishes `:latest` from the smoke-tested, pinned image).
 
 ## Sources
 - This session's grounding workflow (5-dimension verified assessment), 2026-06-13.
