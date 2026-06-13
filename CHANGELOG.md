@@ -11,6 +11,22 @@ Conventional Commits (`tools/extract-release-notes.ps1`).
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-06-13
+
+### Security
+- The CLI now downloads a **pinned Synthea release (v4.0.0)** and **verifies it against a known SHA-256**
+  before running it — closing the "downloads and executes an unverified JAR" gap on the `dotnet tool` path
+  (the Docker image already pinned + verified). To run a different engine, pass `--jar`.
+
+### Changed
+- The default Synthea engine is now the pinned **v4.0.0** release instead of GitHub's mutable
+  `releases/latest` rolling build, so runs are reproducible. Cached JARs are version-named
+  (`synthea-v4.0.0-with-dependencies.jar`); upgrading re-downloads once.
+
+### Fixed
+- Integration tests now **skip cleanly** (instead of failing) when Java is absent, and CI provisions Java
+  (`actions/setup-java`) so the real `java -jar` spawn path is actually exercised and gated.
+
 ## [1.0.1] - 2026-06-13
 
 ### Fixed

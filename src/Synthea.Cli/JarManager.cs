@@ -1,10 +1,8 @@
 // JarManager.cs  — handles lazy download / caching of the latest Synthea JAR
 // namespace: Synthea.Cli
 
-using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -42,8 +40,20 @@ internal interface IJarSource
 internal sealed class JarManager : IJarSource
 {
     private const string Repo = "synthetichealth/synthea";
-    private const string JarHint = "with-dependencies.jar";   // asset we want
-    private const string ShaHint = ".sha256";                 // checksum (if provided)
+    private const string JarHint = "with-dependencies.jar";   // asset name suffix
+
+    // Pinned Synthea release + its known-good SHA-256. The binary downloads and
+    // verifies exactly this release (the Docker image bakes the same one), so the
+    // default `dotnet tool` path runs a reproducible, integrity-checked engine
+    // instead of GitHub's MUTABLE /releases/latest rolling build. To run a
+    // different engine, pass --jar with your own JAR.
+    internal const string PinnedSyntheaVersion = "v4.0.0";
+    internal const string PinnedSyntheaSha256 =
+        "ed43c20ad40ba5c3bc724503a5af032715fe3c491620b766148e7c2361e6ecc1";
+    private static string PinnedJarUrl =>
+        $"https://github.com/{Repo}/releases/download/{PinnedSyntheaVersion}/synthea-with-dependencies.jar";
+    private static string PinnedJarFileName => $"synthea-{PinnedSyntheaVersion}-{JarHint}";
+
     private static readonly ProductInfoHeaderValue UserAgent =
         new("synthea-cli", Program.GetCliVersion());
 
@@ -58,17 +68,22 @@ internal sealed class JarManager : IJarSource
     private readonly HttpClient _http;
     private readonly string? _cacheRootOverride;
     private readonly ILogger<JarManager> _logger;
+    private readonly string _expectedSha256;
 
     public JarManager()
         : this(http: null, cacheRootOverride: null, logger: null)
     {
     }
 
-    public JarManager(HttpClient? http = null, string? cacheRootOverride = null, ILogger<JarManager>? logger = null)
+    // syntheaSha256: the expected hash to verify the download against. Defaults to
+    // the pinned release's hash; injectable so tests can verify a stub JAR.
+    public JarManager(HttpClient? http = null, string? cacheRootOverride = null, ILogger<JarManager>? logger = null,
+                      string? syntheaSha256 = null)
     {
         _http = http ?? CreateDefaultClient();
         _cacheRootOverride = cacheRootOverride;
         _logger = logger ?? NullLogger<JarManager>.Instance;
+        _expectedSha256 = syntheaSha256 ?? PinnedSyntheaSha256;
     }
 
     public string CachePath => ResolveCacheDir();
@@ -113,81 +128,33 @@ internal sealed class JarManager : IJarSource
         var cacheDir = ResolveCacheDir();
         Directory.CreateDirectory(cacheDir);
 
-        // Re-use the newest cached JAR unless caller forces refresh
-        var cached = Directory.GetFiles(cacheDir, $"*{JarHint}")
-                              .OrderByDescending(File.GetLastWriteTimeUtc)
-                              .FirstOrDefault();
-        if (cached is not null && !forceRefresh)
+        // Re-use the pinned, already-verified cache file unless forced to refresh.
+        var jarFile = new FileInfo(Path.Combine(cacheDir, PinnedJarFileName));
+        if (jarFile.Exists && !forceRefresh)
         {
-            _logger.LogDebug("Using cached Synthea JAR at {Path}", cached);
-            return new FileInfo(cached);
+            _logger.LogDebug("Using cached Synthea JAR at {Path}", jarFile.FullName);
+            return jarFile;
         }
 
-        // --- Query GitHub API for latest release ---
-        _logger.LogInformation("Querying GitHub for the latest Synthea release");
-        var releaseJson = await SendGitHubGetAsync(
-            $"https://api.github.com/repos/{Repo}/releases/latest", overrides.GitHubToken, token);
-
-        using var doc = JsonDocument.Parse(releaseJson);
-        if (!doc.RootElement.TryGetProperty("assets", out var assets) ||
-            assets.ValueKind != JsonValueKind.Array)
-        {
-            throw new InvalidOperationException(
-                "Unexpected GitHub release response shape: missing 'assets' array. " +
-                "GitHub may have changed its API, or the latest release is malformed.");
-        }
-
-        string? jarUrl = null;
-        string? shaUrl = null;
-
-        foreach (var a in assets.EnumerateArray())
-        {
-            if (!a.TryGetProperty("name", out var nameEl) ||
-                !a.TryGetProperty("browser_download_url", out var urlEl))
-                continue;
-            var name = nameEl.GetString();
-            var url = urlEl.GetString();
-            if (name is null || url is null) continue;
-
-            if (name.Contains(JarHint, StringComparison.OrdinalIgnoreCase))
-                jarUrl = url;
-            else if (name.EndsWith(ShaHint, StringComparison.OrdinalIgnoreCase))
-                shaUrl = url;
-        }
-
-        if (jarUrl is null)
-            throw new InvalidOperationException("Latest release did not contain a Synthea JAR.");
-
-        // --- (A-36) --insist-checksum: refuse to download if no .sha256 ---
-        if (shaUrl is null && overrides.InsistChecksum)
-            throw new InvalidOperationException(
-                "Upstream release does not publish a .sha256 asset, and --insist-checksum was set. " +
-                "Re-run without --insist-checksum to accept the JAR unverified, or wait for an upstream release with a checksum.");
-
-        var jarFile = Path.Combine(cacheDir, Path.GetFileName(jarUrl));
-
-        // Download with progress to a temp file first. GetRandomFileName() is
-        // preferred over GetTempFileName() — the latter has a 65,535-name
-        // ceiling and creates a 0-byte file as a side effect.
+        // Download the pinned release to a temp file, verify its SHA-256 against
+        // the expected (baked-in) value, then atomically promote it into the
+        // cache. A tampered or corrupt download fails verification and is never
+        // moved into the cache or run. GetRandomFileName() avoids GetTempFileName's
+        // 65,535-name ceiling and 0-byte side-effect.
         var tmpFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         try
         {
-            _logger.LogInformation("Downloading Synthea JAR from {Url}", jarUrl);
-            await DownloadAsync(_http, jarUrl, tmpFile, prog, overrides.GitHubToken, token);
+            _logger.LogInformation("Downloading Synthea {Version} from {Url}", PinnedSyntheaVersion, PinnedJarUrl);
+            await DownloadAsync(_http, PinnedJarUrl, tmpFile, prog, overrides.GitHubToken, token);
 
-            // --- Optional checksum verification ---
-            if (shaUrl is not null)
-            {
-                var expected = (await SendGitHubGetAsync(shaUrl, overrides.GitHubToken, token))
-                               .Split(' ', StringSplitOptions.RemoveEmptyEntries)[0]
-                               .Trim();
-                var actual = await HashFileAsync(tmpFile, token);
-                if (!expected.Equals(actual, StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidOperationException("Checksum mismatch for downloaded Synthea JAR.");
-            }
+            var actual = await HashFileAsync(tmpFile, token);
+            if (!_expectedSha256.Equals(actual, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    $"Synthea JAR integrity check failed: expected SHA-256 {_expectedSha256}, got {actual}. " +
+                    "The download may be corrupt or tampered — refusing to run it.");
 
-            File.Move(tmpFile, jarFile, overwrite: true);
-            _logger.LogInformation("Cached Synthea JAR at {Path}", jarFile);
+            File.Move(tmpFile, jarFile.FullName, overwrite: true);
+            _logger.LogInformation("Cached verified Synthea JAR at {Path}", jarFile.FullName);
         }
         finally
         {
@@ -199,7 +166,8 @@ internal sealed class JarManager : IJarSource
             catch (UnauthorizedAccessException) { }
         }
 
-        return new FileInfo(jarFile);
+        jarFile.Refresh();
+        return jarFile;
     }
 
     private string ResolveCacheDir()
@@ -207,16 +175,6 @@ internal sealed class JarManager : IJarSource
         var cacheRoot = _cacheRootOverride ??
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         return Path.Combine(cacheRoot, "Synthea.Cli");
-    }
-
-    private async Task<string> SendGitHubGetAsync(string url, string? gitHubToken, CancellationToken token)
-    {
-        using var req = new HttpRequestMessage(HttpMethod.Get, url);
-        if (!string.IsNullOrEmpty(gitHubToken))
-            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gitHubToken);
-        using var resp = await _http.SendAsync(req, token);
-        resp.EnsureSuccessStatusCode();
-        return await resp.Content.ReadAsStringAsync(token);
     }
 
     private static async Task DownloadAsync(

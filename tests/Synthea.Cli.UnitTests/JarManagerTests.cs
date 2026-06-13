@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -14,6 +14,12 @@ namespace Synthea.Cli.UnitTests;
 
 public class JarManagerTests : IDisposable
 {
+    // JarManager downloads/verifies exactly this pinned release (no GitHub API
+    // call). Tests stub this URL and inject the SHA of their stub bytes.
+    private const string PinnedUrl =
+        "https://github.com/synthetichealth/synthea/releases/download/v4.0.0/synthea-with-dependencies.jar";
+    private const string PinnedCacheName = "synthea-v4.0.0-with-dependencies.jar";
+
     private readonly string _tempDir;
     public JarManagerTests()
     {
@@ -27,34 +33,36 @@ public class JarManagerTests : IDisposable
     }
 
     private static HttpClient CreateClient(Dictionary<string, string> texts, Dictionary<string, byte[]> binaries)
-    {
-        return new HttpClient(new StubHandler(texts, binaries));
-    }
+        => new(new StubHandler(texts, binaries));
+
+    private static string Sha256Hex(byte[] data)
+        => Convert.ToHexString(SHA256.HashData(data)).ToLowerInvariant();
 
     [Fact]
     public async Task ReturnsCachedFileWhenPresent()
     {
         var cache = Path.Combine(_tempDir, "Synthea.Cli");
         Directory.CreateDirectory(cache);
-        var existing = Path.Combine(cache, "cached-with-dependencies.jar");
+        var existing = Path.Combine(cache, PinnedCacheName);
         await File.WriteAllTextAsync(existing, "dummy");
 
-        var jm = new JarManager(CreateClient(new(), new()), _tempDir);
+        // A handler that throws on any HTTP call proves the cache hit skips the network.
+        var jm = new JarManager(new HttpClient(new ThrowingHandler()), _tempDir);
         var fi = await jm.EnsureJarAsync();
         Assert.Equal(existing, fi.FullName);
     }
 
     [Fact]
-    public async Task DownloadsJarWhenMissing()
+    public async Task DownloadsAndVerifiesPinnedJar_WhenMissing()
     {
-        var releaseJson = "{\"assets\":[{\"name\":\"synthea-with-dependencies.jar\",\"browser_download_url\":\"http://host/jar\"}]}";
         var jarBytes = new byte[] { 1, 2, 3 };
-        var texts = new Dictionary<string, string> { { "https://api.github.com/repos/synthetichealth/synthea/releases/latest", releaseJson } };
-        var bins = new Dictionary<string, byte[]> { { "http://host/jar", jarBytes } };
+        var bins = new Dictionary<string, byte[]> { { PinnedUrl, jarBytes } };
 
-        var jm = new JarManager(CreateClient(texts, bins), _tempDir);
+        var jm = new JarManager(CreateClient(new(), bins), _tempDir, syntheaSha256: Sha256Hex(jarBytes));
         var fi = await jm.EnsureJarAsync();
+
         Assert.True(File.Exists(fi.FullName));
+        Assert.Equal(PinnedCacheName, fi.Name);
         Assert.Equal(jarBytes, File.ReadAllBytes(fi.FullName));
     }
 
@@ -62,12 +70,9 @@ public class JarManagerTests : IDisposable
     public async Task LogsDownloadProgress_AtInformation()
     {
         // Capturing logger provider observes JarManager's Information-level
-        // entries during a download. The earlier static-Console.Write pattern
-        // is gone; this pins the swap so a regression to silent or
-        // Console-based output is caught. (A-11)
-        var releaseJson = "{\"assets\":[{\"name\":\"synthea-with-dependencies.jar\",\"browser_download_url\":\"http://host/jar\"}]}";
-        var texts = new Dictionary<string, string> { { "https://api.github.com/repos/synthetichealth/synthea/releases/latest", releaseJson } };
-        var bins = new Dictionary<string, byte[]> { { "http://host/jar", new byte[] { 9, 9, 9 } } };
+        // entries during a download. Pins the swap away from Console output. (A-11)
+        var jarBytes = new byte[] { 9, 9, 9 };
+        var bins = new Dictionary<string, byte[]> { { PinnedUrl, jarBytes } };
 
         var captured = new List<(LogLevel Level, string Message)>();
         using var factory = LoggerFactory.Create(b =>
@@ -76,26 +81,24 @@ public class JarManagerTests : IDisposable
             b.AddProvider(new CapturingLoggerProvider(captured));
         });
 
-        var jm = new JarManager(CreateClient(texts, bins), _tempDir, factory.CreateLogger<JarManager>());
+        var jm = new JarManager(CreateClient(new(), bins), _tempDir, factory.CreateLogger<JarManager>(),
+                                syntheaSha256: Sha256Hex(jarBytes));
         await jm.EnsureJarAsync();
 
         Assert.Contains(captured, e => e.Level == LogLevel.Information && e.Message.Contains("Synthea", StringComparison.Ordinal));
     }
 
     [Fact]
-    public async Task ThrowsWhenChecksumMismatch()
+    public async Task ThrowsWhenDownloadFailsIntegrityCheck()
     {
-        var releaseJson = "{\"assets\":[{\"name\":\"synthea-with-dependencies.jar\",\"browser_download_url\":\"http://host/jar\"},{\"name\":\"synthea.jar.sha256\",\"browser_download_url\":\"http://host/jar.sha\"}]}";
         var jarBytes = new byte[] { 4, 5, 6 };
-        var texts = new Dictionary<string, string>
-        {
-            {"https://api.github.com/repos/synthetichealth/synthea/releases/latest", releaseJson},
-            {"http://host/jar.sha", "deadbeef"}
-        };
-        var bins = new Dictionary<string, byte[]> { { "http://host/jar", jarBytes } };
+        var bins = new Dictionary<string, byte[]> { { PinnedUrl, jarBytes } };
 
-        var jm = new JarManager(CreateClient(texts, bins), _tempDir);
+        // Inject a SHA that does NOT match the downloaded bytes → integrity failure,
+        // unconditionally (no opt-in flag). A tampered download must never be cached.
+        var jm = new JarManager(CreateClient(new(), bins), _tempDir, syntheaSha256: "deadbeef");
         await Assert.ThrowsAsync<InvalidOperationException>(() => jm.EnsureJarAsync());
+        Assert.False(File.Exists(Path.Combine(_tempDir, "Synthea.Cli", PinnedCacheName)));
     }
 
     [Fact]
@@ -104,8 +107,7 @@ public class JarManagerTests : IDisposable
         // Pre-create a fake "user-supplied" JAR outside the cache.
         var external = Path.Combine(_tempDir, "external.jar");
         await File.WriteAllTextAsync(external, "fake");
-        // Use a handler that throws if any HTTP call is made — proves the
-        // override truly skips the network.
+        // A handler that throws on any HTTP call proves the override skips the network.
         var jm = new JarManager(new HttpClient(new ThrowingHandler()), _tempDir);
         var fi = await jm.EnsureJarAsync(overrides: new JarOverrides(JarPath: external));
         Assert.Equal(external, fi.FullName);
@@ -123,29 +125,12 @@ public class JarManagerTests : IDisposable
     [Fact]
     public async Task GitHubToken_AddsAuthorizationBearerHeader()
     {
-        var releaseJson = "{\"assets\":[{\"name\":\"synthea-with-dependencies.jar\",\"browser_download_url\":\"http://host/jar\"}]}";
-        var capture = new HeaderCapturingHandler(new Dictionary<string, string>
-        {
-            { "https://api.github.com/repos/synthetichealth/synthea/releases/latest", releaseJson }
-        }, new Dictionary<string, byte[]> { { "http://host/jar", new byte[] { 1 } } });
-        var jm = new JarManager(new HttpClient(capture), _tempDir);
+        var jarBytes = new byte[] { 1 };
+        var capture = new HeaderCapturingHandler(new(), new Dictionary<string, byte[]> { { PinnedUrl, jarBytes } });
+        var jm = new JarManager(new HttpClient(capture), _tempDir, syntheaSha256: Sha256Hex(jarBytes));
         await jm.EnsureJarAsync(overrides: new JarOverrides(GitHubToken: "secret-tok"));
 
         Assert.Contains(capture.SeenAuthHeaders, h => h is { Scheme: "Bearer", Parameter: "secret-tok" });
-    }
-
-    [Fact]
-    public async Task InsistChecksum_ThrowsWhenUpstreamHasNoSha()
-    {
-        var releaseJson = "{\"assets\":[{\"name\":\"synthea-with-dependencies.jar\",\"browser_download_url\":\"http://host/jar\"}]}";
-        var texts = new Dictionary<string, string>
-        {
-            { "https://api.github.com/repos/synthetichealth/synthea/releases/latest", releaseJson }
-        };
-        var bins = new Dictionary<string, byte[]> { { "http://host/jar", new byte[] { 1 } } };
-        var jm = new JarManager(CreateClient(texts, bins), _tempDir);
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            jm.EnsureJarAsync(overrides: new JarOverrides(InsistChecksum: true)));
     }
 
     private sealed class ThrowingHandler : HttpMessageHandler
@@ -208,7 +193,7 @@ public class JarManagerTests : IDisposable
         }
     }
 
-    private class StubHandler : HttpMessageHandler
+    private sealed class StubHandler : HttpMessageHandler
     {
         private readonly Dictionary<string, string> _texts;
         private readonly Dictionary<string, byte[]> _bins;
@@ -221,9 +206,7 @@ public class JarManagerTests : IDisposable
         {
             var url = request.RequestUri!.ToString();
             if (_texts.TryGetValue(url, out var text))
-            {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(text) });
-            }
             if (_bins.TryGetValue(url, out var data))
             {
                 var resp = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(data) };

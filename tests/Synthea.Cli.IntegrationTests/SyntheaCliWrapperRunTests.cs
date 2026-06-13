@@ -138,7 +138,7 @@ public class SyntheaCliWrapperRunTests : IDisposable
         }
     }
 
-    [Theory]
+    [SkippableTheory]
     [InlineData(1, 1)]
     [InlineData(2, 2)]
     public async Task Synthea_CLI_Wrapper_Generates_Correct_Number_Of_Patient_Files(int population, int expectedCount)
@@ -152,8 +152,9 @@ public class SyntheaCliWrapperRunTests : IDisposable
         }
         catch (SkipTestException ex)
         {
-            // Mark as skipped by failing with a clear message (xUnit does not support runtime skip natively)
-            Assert.Fail($"SKIPPED: {ex.Message}");
+            // Real skip (not a failure) when Java or the built CLI is absent — e.g. a
+            // dev box without a JDK. CI installs Java (setup-java) so this actually runs.
+            Skip.If(true, ex.Message);
         }
     }
 }
