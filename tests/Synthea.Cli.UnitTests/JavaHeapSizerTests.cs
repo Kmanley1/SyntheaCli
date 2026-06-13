@@ -38,13 +38,41 @@ public class JavaHeapSizerTests
     [Fact]
     public void Resolve_NoOverride_UsesSuggestion()
     {
-        Assert.Equal("-Xmx4g", JavaHeapSizer.Resolve(null, 50_000));
+        // Inject ample RAM so the tier is not clamped (deterministic).
+        Assert.Equal("-Xmx4g", JavaHeapSizer.Resolve(null, 50_000, 32L * 1024 * 1024 * 1024, out _));
     }
 
     [Fact]
     public void Resolve_NoOverrideAndSmallPop_ReturnsNull()
     {
-        Assert.Null(JavaHeapSizer.Resolve(null, 100));
+        Assert.Null(JavaHeapSizer.Resolve(null, 100, 32L * 1024 * 1024 * 1024, out _));
+    }
+
+    [Fact]
+    public void Resolve_ClampsSuggestionToAvailableRam_WithNote()
+    {
+        // 5M population suggests -Xmx16g, but only ~8 GB available → ~70% = ~5 GB.
+        var heap = JavaHeapSizer.Resolve(null, 5_000_000, 8L * 1024 * 1024 * 1024, out var note);
+        Assert.Equal("-Xmx5g", heap);
+        Assert.NotNull(note);
+        Assert.Contains("clamped", note!, System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Resolve_LowRam_ReturnsNullWithNote()
+    {
+        // Under ~1.4 GB available → no -Xmx hint, just an explanatory note.
+        var heap = JavaHeapSizer.Resolve(null, 50_000, 1L * 1024 * 1024 * 1024, out var note);
+        Assert.Null(heap);
+        Assert.NotNull(note);
+    }
+
+    [Fact]
+    public void Resolve_OverrideNeverClamped_EvenOnLowRam()
+    {
+        // An explicit override is honored verbatim regardless of available RAM.
+        Assert.Equal("-Xmx16g", JavaHeapSizer.Resolve("16g", 100, 1L * 1024 * 1024 * 1024, out var note));
+        Assert.Null(note);
     }
 
     [Theory]
@@ -79,7 +107,8 @@ public class JavaHeapSizerTests
     {
         var args = MinimalArgs(population: 50_000);
         var psi = RunCommand.CreateProcessStartInfo(MinimalHosting(), args,
-            new FileInfo(Path.Combine(Path.GetTempPath(), "synthea.jar")));
+            new FileInfo(Path.Combine(Path.GetTempPath(), "synthea.jar")),
+            availableBytes: 32L * 1024 * 1024 * 1024);   // ample RAM → tier not clamped (deterministic)
         var list = psi.ArgumentList;
         var xmxIdx = list.IndexOf("-Xmx4g");
         var jarIdx = list.IndexOf("-jar");

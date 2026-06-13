@@ -11,6 +11,15 @@ Conventional Commits (`tools/extract-release-notes.ps1`).
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-06-13
+
+### Fixed
+- The auto JVM heap size is now **clamped to ~70% of detected RAM** (with an explanatory stderr note), so a
+  large `-p` no longer fails fast with an opaque JVM "Could not reserve enough space for object heap". An
+  explicit `--java-heap` is never clamped.
+- The Synthea JAR download now has a **per-attempt idle read timeout + bounded retry** (3 attempts), so a
+  stalled mid-download connection fails over (and retries) instead of hanging the terminal indefinitely.
+
 ## [1.0.2] - 2026-06-13
 
 ### Security

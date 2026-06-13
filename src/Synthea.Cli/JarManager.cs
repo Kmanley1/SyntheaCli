@@ -54,6 +54,12 @@ internal sealed class JarManager : IJarSource
         $"https://github.com/{Repo}/releases/download/{PinnedSyntheaVersion}/synthea-with-dependencies.jar";
     private static string PinnedJarFileName => $"synthea-{PinnedSyntheaVersion}-{JarHint}";
 
+    // F-004: bounded retry + a per-attempt idle read deadline, so a stalled
+    // mid-download connection fails (and retries) instead of hanging the run.
+    private const int MaxDownloadAttempts = 3;
+    private static readonly TimeSpan DownloadIdleTimeout = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(1);
+
     private static readonly ProductInfoHeaderValue UserAgent =
         new("synthea-cli", Program.GetCliVersion());
 
@@ -145,7 +151,7 @@ internal sealed class JarManager : IJarSource
         try
         {
             _logger.LogInformation("Downloading Synthea {Version} from {Url}", PinnedSyntheaVersion, PinnedJarUrl);
-            await DownloadAsync(_http, PinnedJarUrl, tmpFile, prog, overrides.GitHubToken, token);
+            await DownloadWithRetryAsync(PinnedJarUrl, tmpFile, prog, overrides.GitHubToken, token);
 
             var actual = await HashFileAsync(tmpFile, token);
             if (!_expectedSha256.Equals(actual, StringComparison.OrdinalIgnoreCase))
@@ -177,10 +183,45 @@ internal sealed class JarManager : IJarSource
         return Path.Combine(cacheRoot, "Synthea.Cli");
     }
 
+    // Bounded retry around a single download attempt. Genuine user cancellation
+    // propagates immediately; transient network/IO/idle-timeout failures retry up
+    // to MaxDownloadAttempts, then surface as a clear InvalidOperationException.
+    private async Task DownloadWithRetryAsync(string url, string dest,
+        IProgress<(long, long)>? prog, string? gitHubToken, CancellationToken token)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await DownloadAsync(_http, url, dest, prog, gitHubToken, DownloadIdleTimeout, token);
+                return;
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                throw;   // genuine user cancellation — not a transient failure
+            }
+            catch (Exception ex) when (attempt < MaxDownloadAttempts && IsTransient(ex))
+            {
+                _logger.LogWarning("Download attempt {Attempt}/{Max} failed ({Reason}); retrying…",
+                    attempt, MaxDownloadAttempts, ex.Message);
+                await Task.Delay(RetryDelay, token);
+            }
+            catch (Exception ex) when (IsTransient(ex))
+            {
+                throw new InvalidOperationException(
+                    $"Failed to download the Synthea JAR after {MaxDownloadAttempts} attempts: {ex.Message}", ex);
+            }
+        }
+    }
+
+    private static bool IsTransient(Exception ex)
+        => ex is HttpRequestException or IOException or OperationCanceledException;
+
     private static async Task DownloadAsync(
         HttpClient http, string url, string dest,
         IProgress<(long, long)>? prog,
         string? gitHubToken,
+        TimeSpan idleTimeout,
         CancellationToken token)
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, url);
@@ -192,15 +233,20 @@ internal sealed class JarManager : IJarSource
 
         var total = resp.Content.Headers.ContentLength ?? -1L;
 
-        // Stream is IDisposable too
         using var src = await resp.Content.ReadAsStreamAsync(token);
         await using var dst = File.Create(dest);                    // FileStream *is* IAsyncDisposable
 
+        // Idle read deadline: cancels if no bytes arrive within idleTimeout, so a
+        // stalled connection fails (and is retried) instead of hanging forever.
+        using var idle = CancellationTokenSource.CreateLinkedTokenSource(token);
         var buffer = new byte[81920];
         long readSoFar = 0;
-        int read;
-        while ((read = await src.ReadAsync(buffer, token)) > 0)
+        while (true)
         {
+            idle.CancelAfter(idleTimeout);                // deadline applies only to the network read…
+            var read = await src.ReadAsync(buffer, idle.Token);
+            idle.CancelAfter(Timeout.InfiniteTimeSpan);   // …not the disk write/report below
+            if (read <= 0) break;
             await dst.WriteAsync(buffer.AsMemory(0, read), token);
             readSoFar += read;
             prog?.Report((readSoFar, total));

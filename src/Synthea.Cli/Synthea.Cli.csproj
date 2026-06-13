@@ -12,7 +12,7 @@
     <!-- Single version source: drives PackageVersion, AssemblyVersion, and the
          InformationalVersion the CLI reports for its version flag. CI passes
          /p:Version=<tag> at pack time (see .github/workflows/nuget.yml). -->
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <!-- Keep the reported version a clean semver (no +<git-sha>) and identical
          across build contexts; the Docker build has no .git to read a sha from. -->
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>

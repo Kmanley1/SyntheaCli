@@ -494,7 +494,8 @@ internal static class RunCommand
     }
 
     internal static ProcessStartInfo CreateProcessStartInfo(
-        HostingOptions hosting, SyntheaArgs args, FileInfo jar, string? heapOverride = null)
+        HostingOptions hosting, SyntheaArgs args, FileInfo jar, string? heapOverride = null,
+        long? availableBytes = null)
     {
         var psi = new ProcessStartInfo(hosting.JavaPath)
         {
@@ -504,10 +505,13 @@ internal static class RunCommand
             WorkingDirectory = hosting.Output.FullName
         };
         // C3: JVM args must precede `-jar`. If the user supplied --java-heap
-        // we honor it; otherwise we let JavaHeapSizer pick a tier based on
-        // --population. Sub-1000 populations get no heap arg so the JVM
-        // default applies.
-        var heap = JavaHeapSizer.Resolve(heapOverride, args.Population);
+        // we honor it; otherwise JavaHeapSizer picks a tier from --population,
+        // clamped to fit available RAM. Sub-1000 populations get no heap arg.
+        // availableBytes is injectable so heap tests stay deterministic.
+        var heap = JavaHeapSizer.Resolve(heapOverride, args.Population,
+            availableBytes ?? GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, out var heapNote);
+        if (heapNote is not null)
+            Console.Error.WriteLine(heapNote);
         if (!string.IsNullOrWhiteSpace(heap))
             psi.ArgumentList.Add(heap);
         psi.ArgumentList.Add("-jar");
@@ -526,7 +530,10 @@ internal static class RunCommand
         Console.WriteLine($"# Synthea JAR:     {jarLabel}");
         Console.WriteLine($"# Working dir:     {hosting.Output.FullName}");
         Console.Write(QuoteForShell(hosting.JavaPath));
-        var heap = JavaHeapSizer.Resolve(heapOverride, args.Population);
+        var heap = JavaHeapSizer.Resolve(heapOverride, args.Population,
+            GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, out var heapNote);
+        if (heapNote is not null)
+            Console.Error.WriteLine(heapNote);   // explain the clamp on stderr; stdout stays the clean command
         if (!string.IsNullOrWhiteSpace(heap))
         {
             Console.Write(' ');

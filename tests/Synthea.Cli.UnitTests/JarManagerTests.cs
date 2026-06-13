@@ -133,6 +133,46 @@ public class JarManagerTests : IDisposable
         Assert.Contains(capture.SeenAuthHeaders, h => h is { Scheme: "Bearer", Parameter: "secret-tok" });
     }
 
+    [Fact]
+    public async Task Download_RetriesTransientFailure_ThenSucceeds()
+    {
+        var jarBytes = new byte[] { 7, 7, 7 };
+        var handler = new FlakyHandler(failFirst: 1, url: PinnedUrl, payload: jarBytes);
+        var jm = new JarManager(new HttpClient(handler), _tempDir, syntheaSha256: Sha256Hex(jarBytes));
+
+        var fi = await jm.EnsureJarAsync();
+
+        Assert.True(File.Exists(fi.FullName));
+        Assert.Equal(2, handler.Attempts);   // failed once, succeeded on the retry
+    }
+
+    private sealed class FlakyHandler : HttpMessageHandler
+    {
+        private readonly int _failFirst;
+        private readonly string _url;
+        private readonly byte[] _payload;
+        public int Attempts { get; private set; }
+
+        public FlakyHandler(int failFirst, string url, byte[] payload)
+        {
+            _failFirst = failFirst;
+            _url = url;
+            _payload = payload;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (request.RequestUri!.ToString() != _url)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+            Attempts++;
+            if (Attempts <= _failFirst)
+                throw new HttpRequestException("simulated transient failure");
+            var resp = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(_payload) };
+            resp.Content.Headers.ContentLength = _payload.Length;
+            return Task.FromResult(resp);
+        }
+    }
+
     private sealed class ThrowingHandler : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
