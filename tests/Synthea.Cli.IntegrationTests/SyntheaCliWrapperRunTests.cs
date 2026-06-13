@@ -97,7 +97,6 @@ public class SyntheaCliWrapperRunTests : IDisposable
         return (proc.ExitCode, stdOut, stdErr);
     }
 
-    private const string FhirSubDir = "output";
     private const string FhirTypeDir = "fhir";
     private const string HospitalInfo = "hospitalInformation";
     private const string PractitionerInfo = "practitionerInformation";
@@ -111,7 +110,9 @@ public class SyntheaCliWrapperRunTests : IDisposable
 
         Assert.Equal(0, exitCode);
 
-        var fhirDir = Path.Combine(_workDir, testOutputDir, FhirSubDir, FhirTypeDir);
+        // Output lands directly in -o <dir> (the CLI passes Synthea an absolute
+        // exporter.baseDirectory), so FHIR is at <dir>/fhir, not <dir>/output/fhir.
+        var fhirDir = Path.Combine(_workDir, testOutputDir, FhirTypeDir);
         EnsureFhirDirExists(fhirDir, stdOut, stdErr);
 
         // Get all JSON files and filter out known non-patient files

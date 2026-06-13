@@ -299,9 +299,14 @@ internal static class RunCommand
         return runCmd;
     }
 
-    internal static List<string> BuildArgumentList(SyntheaArgs o)
+    internal static List<string> BuildArgumentList(SyntheaArgs o, string? outputBaseDir = null)
     {
         var argList = new List<string>();
+        // Write generated files directly under -o <dir>. Synthea's default is a
+        // ./output subfolder relative to cwd; an absolute baseDirectory makes the
+        // --output dir mean exactly what its help text says it does.
+        if (!string.IsNullOrEmpty(outputBaseDir))
+            argList.Add($"--exporter.baseDirectory={outputBaseDir}");
         if (o.Population.HasValue)
         {
             argList.Add("-p");
@@ -505,7 +510,7 @@ internal static class RunCommand
             psi.ArgumentList.Add(heap);
         psi.ArgumentList.Add("-jar");
         psi.ArgumentList.Add(jar.FullName);
-        foreach (var a in BuildArgumentList(args))
+        foreach (var a in BuildArgumentList(args, Path.GetFullPath(hosting.Output.FullName)))
             psi.ArgumentList.Add(a);
         return psi;
     }
@@ -527,7 +532,7 @@ internal static class RunCommand
         }
         Console.Write(" -jar ");
         Console.Write(QuoteForShell(jarLabel));
-        foreach (var a in BuildArgumentList(args))
+        foreach (var a in BuildArgumentList(args, Path.GetFullPath(hosting.Output.FullName)))
         {
             Console.Write(' ');
             Console.Write(QuoteForShell(a));

@@ -51,7 +51,7 @@ public class ProgramHandlerTests : IDisposable
         var psi = _runner.StartInfo!;
         Assert.Equal("java", psi.FileName);
         Assert.Equal(outDir, psi.WorkingDirectory);
-        Assert.Equal(new[] { "-jar", _jar.FullName, "Ohio", "Cleveland" }, psi.ArgumentList);
+        Assert.Equal(new[] { "-jar", _jar.FullName, $"--exporter.baseDirectory={Path.GetFullPath(outDir)}", "Ohio", "Cleveland" }, psi.ArgumentList);
         Assert.True(Directory.Exists(outDir));
     }
 
@@ -62,7 +62,7 @@ public class ProgramHandlerTests : IDisposable
         var code = await Run("run", "--output", outDir, "--state", "Massachusetts");
         Assert.Equal(0, code);
 
-        Assert.Equal(new[] { "-jar", _jar.FullName, "Massachusetts" }, _runner.StartInfo!.ArgumentList);
+        Assert.Equal(new[] { "-jar", _jar.FullName, $"--exporter.baseDirectory={Path.GetFullPath(outDir)}", "Massachusetts" }, _runner.StartInfo!.ArgumentList);
     }
 
     [Fact]
@@ -72,7 +72,7 @@ public class ProgramHandlerTests : IDisposable
         var code = await Run("run", "--output", outDir, "--state", "New Hampshire");
         Assert.Equal(0, code);
 
-        Assert.Equal(new[] { "-jar", _jar.FullName, "New Hampshire" }, _runner.StartInfo!.ArgumentList);
+        Assert.Equal(new[] { "-jar", _jar.FullName, $"--exporter.baseDirectory={Path.GetFullPath(outDir)}", "New Hampshire" }, _runner.StartInfo!.ArgumentList);
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public class ProgramHandlerTests : IDisposable
         var code = await Run("run", "--output", outDir, "--state", "tx");
         Assert.Equal(0, code);
 
-        Assert.Equal(new[] { "-jar", _jar.FullName, "Texas" }, _runner.StartInfo!.ArgumentList);
+        Assert.Equal(new[] { "-jar", _jar.FullName, $"--exporter.baseDirectory={Path.GetFullPath(outDir)}", "Texas" }, _runner.StartInfo!.ArgumentList);
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public class ProgramHandlerTests : IDisposable
         var outDir = Path.Combine(_tempDir, "out3");
         var code = await Run("run", "--output", outDir, "-p", "42");
         Assert.Equal(0, code);
-        Assert.Equal(new[] { "-jar", _jar.FullName, "-p", "42" }, _runner.StartInfo!.ArgumentList);
+        Assert.Equal(new[] { "-jar", _jar.FullName, $"--exporter.baseDirectory={Path.GetFullPath(outDir)}", "-p", "42" }, _runner.StartInfo!.ArgumentList);
     }
 
     [Fact]
@@ -125,7 +125,7 @@ public class ProgramHandlerTests : IDisposable
         var outDir = Path.Combine(_tempDir, "out5");
         var code = await Run("run", "--output", outDir, "-s", "123");
         Assert.Equal(0, code);
-        Assert.Equal(new[] { "-jar", _jar.FullName, "-s", "123" }, _runner.StartInfo!.ArgumentList);
+        Assert.Equal(new[] { "-jar", _jar.FullName, $"--exporter.baseDirectory={Path.GetFullPath(outDir)}", "-s", "123" }, _runner.StartInfo!.ArgumentList);
     }
 
     [Fact]
@@ -139,13 +139,14 @@ public class ProgramHandlerTests : IDisposable
     [Fact]
     public async Task SameSeedProducesSameArguments()
     {
-        var outDir1 = Path.Combine(_tempDir, "out7a");
-        var code1 = await Run("run", "--output", outDir1, "-s", "77");
+        // Same seed AND same output dir → identical Synthea args (the output
+        // dir feeds --exporter.baseDirectory, so it must match to compare).
+        var outDir = Path.Combine(_tempDir, "out7");
+        var code1 = await Run("run", "--output", outDir, "-s", "77");
         Assert.Equal(0, code1);
         var args1 = _runner.StartInfo!.ArgumentList.ToArray();
 
-        var outDir2 = Path.Combine(_tempDir, "out7b");
-        var code2 = await Run("run", "--output", outDir2, "-s", "77");
+        var code2 = await Run("run", "--output", outDir, "-s", "77");
         Assert.Equal(0, code2);
         var args2 = _runner.StartInfo!.ArgumentList.ToArray();
 
@@ -270,7 +271,7 @@ public class ProgramHandlerTests : IDisposable
         var code = await Run("run", "--output", outDir, "--module", "flu", "--module", "covid");
         Assert.Equal(0, code);
         var list = _runner.StartInfo!.ArgumentList;
-        Assert.Equal(new[] { "-jar", _jar.FullName, "--module", "flu", "--module", "covid" }, list);
+        Assert.Equal(new[] { "-jar", _jar.FullName, $"--exporter.baseDirectory={Path.GetFullPath(outDir)}", "--module", "flu", "--module", "covid" }, list);
     }
 
     [Fact]
@@ -333,7 +334,7 @@ public class ProgramHandlerTests : IDisposable
         var code = await Run("run", "--output", outDir, "--state", "OH", "--zip", "44101");
         Assert.Equal(0, code);
         var list = _runner.StartInfo!.ArgumentList;
-        Assert.Equal(new[] { "-jar", _jar.FullName, "Ohio", "44101" }, list);
+        Assert.Equal(new[] { "-jar", _jar.FullName, $"--exporter.baseDirectory={Path.GetFullPath(outDir)}", "Ohio", "44101" }, list);
     }
 
     [Fact]
@@ -704,6 +705,17 @@ public class ProgramHandlerTests : IDisposable
         Assert.Contains("--exporter.fhir.bulk_data=true", _runner.StartInfo!.ArgumentList);
     }
 
+    // Output lands directly under -o <dir> (not a nested output/ subfolder):
+    // the CLI passes Synthea an absolute exporter.baseDirectory.
+    [Fact]
+    public async Task Run_EmitsExporterBaseDirectory_ForOutputDir()
+    {
+        var outDir = Path.Combine(_tempDir, "out-basedir");
+        var code = await Run("run", "--output", outDir, "--state", "OH");
+        Assert.Equal(0, code);
+        Assert.Contains($"--exporter.baseDirectory={Path.GetFullPath(outDir)}", _runner.StartInfo!.ArgumentList);
+    }
+
     // D1: --version shows a two-line report including the JAR cache info.
     [Fact]
     public void BuildVersionReport_NoCachedJar_SaysNotYetCached()
@@ -734,6 +746,19 @@ public class ProgramHandlerTests : IDisposable
         Assert.Contains("configured:", report);
         Assert.Contains(jarPath, report);
         Assert.DoesNotContain("not yet cached", report);
+    }
+
+    // Container provenance: the baked Synthea version (env SYNTHEA_JAR_VERSION,
+    // set by the Docker image) is authoritative — Synthea's JAR has no clean
+    // Implementation-Version, so without this --version says "version unavailable".
+    [Fact]
+    public void BuildVersionReport_WithBakedSyntheaVersion_ShowsIt()
+    {
+        var jarPath = Path.Combine(_tempDir, "synthea-with-dependencies.jar");
+        File.WriteAllBytes(jarPath, new byte[1024]);
+        var report = Program.BuildVersionReport(new NoJarStub(), new FileInfo(jarPath), "v4.0.0");
+        Assert.Contains("synthea-jar v4.0.0", report);
+        Assert.DoesNotContain("version unavailable", report);
     }
 
     [Fact]

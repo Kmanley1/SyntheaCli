@@ -71,7 +71,7 @@ internal static class Program
             handler.UseProxy = true;
         }
         var client = new HttpClient(handler);
-        client.DefaultRequestHeaders.UserAgent.Add(ProductInfoHeaderValue.Parse("Synthea.Cli/0.1"));
+        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("synthea-cli", GetCliVersion()));
         return client;
     }
 
@@ -149,13 +149,16 @@ internal static class Program
     // D1: returns the multi-line version report. Public + ServiceLocator-
     // free for testability — pass any IJarSource (real or stubbed).
     internal static string BuildVersionReport(IJarSource jarSource)
-        => BuildVersionReport(jarSource, RunCommand.ResolveOverrideJar());
+        => BuildVersionReport(jarSource, RunCommand.ResolveOverrideJar(),
+                              Environment.GetEnvironmentVariable("SYNTHEA_JAR_VERSION"));
 
     // overrideJar: an explicit JAR from --jar/SYNTHEA_CLI_JAR_PATH/config that
     // takes precedence over the download cache (so a baked JAR is reported, not
-    // "not yet cached"). Separate overload keeps the report unit-testable
-    // without touching process env. (D1 + container UX fix)
-    internal static string BuildVersionReport(IJarSource jarSource, FileInfo? overrideJar)
+    // "not yet cached"). bakedSyntheaVersion: the Synthea release stamped into a
+    // container image (env SYNTHEA_JAR_VERSION) — authoritative when present,
+    // because Synthea's JAR carries no clean Implementation-Version. Separate
+    // overload keeps the report unit-testable without touching process env.
+    internal static string BuildVersionReport(IJarSource jarSource, FileInfo? overrideJar, string? bakedSyntheaVersion = null)
     {
         var sb = new StringBuilder();
         sb.Append("synthea-cli ").Append(GetCliVersion()).AppendLine();
@@ -166,7 +169,9 @@ internal static class Program
         }
         else
         {
-            var jarVer = TryReadJarVersion(jar.FullName) ?? "version unavailable";
+            var jarVer = (!string.IsNullOrEmpty(bakedSyntheaVersion) && bakedSyntheaVersion != "latest")
+                ? bakedSyntheaVersion
+                : (TryReadJarVersion(jar.FullName) ?? "version unavailable");
             sb.Append("synthea-jar ").Append(jarVer);
             if (overrideJar is not null)
                 sb.Append(" (configured: ").Append(jar.FullName).Append(')');

@@ -45,7 +45,7 @@ internal sealed class JarManager : IJarSource
     private const string JarHint = "with-dependencies.jar";   // asset we want
     private const string ShaHint = ".sha256";                 // checksum (if provided)
     private static readonly ProductInfoHeaderValue UserAgent =
-        ProductInfoHeaderValue.Parse("Synthea.Cli/0.1");
+        new("synthea-cli", Program.GetCliVersion());
 
     private static HttpClient CreateDefaultClient() => new()
     {
