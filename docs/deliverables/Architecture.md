@@ -1,6 +1,6 @@
 # Synthea.Cli Architecture
 
-> A C4-style view of `Synthea.Cli`: a .NET 8 global tool that wraps the
+> A C4-style view of `Synthea.Cli`: a .NET 10 global tool that wraps the
 > MITRE Synthea synthetic-patient generator, handling JAR download,
 > caching, and process orchestration so users only need .NET and Java
 > installed.
@@ -15,12 +15,12 @@ release JAR. It does not implement any synthetic-patient logic itself.
 ```mermaid
 flowchart LR
     User([User / CI])
-    SyntheaCli[Synthea.Cli<br/>.NET 8 global tool]
+    SyntheaCli[Synthea.Cli<br/>.NET 10 global tool]
     GitHub[(GitHub Releases<br/>synthetichealth/synthea)]
     Java[Java JRE 17+]
     Output[(Local filesystem<br/>output directory)]
 
-    User -->|run / cache list / cache clear| SyntheaCli
+    User -->|run / cache / doctor / modules| SyntheaCli
     SyntheaCli -->|GET /releases/latest| GitHub
     SyntheaCli -->|spawn java -jar synthea.jar ...| Java
     Java -->|FHIR/CSV/CCDA/... files| Output
@@ -78,22 +78,32 @@ flowchart TB
     Program[Program<br/>composition root + DI]
     Run[RunCommand]
     Cache[CacheCommand]
+    Doctor[DoctorCommand]
+    Modules[ModulesCommand]
     Conf[CliConfig]
     Jar[JarManager : IJarSource]
     Proc[DefaultProcessRunner : IProcessRunner]
+    JavaDet[JavaDetector : IJavaDetector]
     Log[ILoggerFactory<br/>console provider]
     Http[HttpClient<br/>with optional proxy]
 
     Program --> Run
     Program --> Cache
+    Program --> Doctor
+    Program --> Modules
     Program --> Jar
     Program --> Proc
+    Program --> JavaDet
     Program --> Log
     Program --> Http
     Run --> Conf
     Run --> Jar
     Run --> Proc
+    Run --> JavaDet
     Cache --> Jar
+    Doctor --> Jar
+    Doctor --> JavaDet
+    Modules --> Jar
     Jar --> Http
     Jar --> Log
 ```
@@ -103,9 +113,15 @@ flowchart TB
 | `Program` | Composition root. Builds `ServiceProvider`, parses verbosity flags, dispatches root command. |
 | `RunCommand` | `synthea run …` — option definitions, validators, `JarOverrides` resolution, process spawn. |
 | `CacheCommand` | `synthea cache list / clear`. Reads `IJarSource.CachePath` and operates on the directory. |
+| `DoctorCommand` | `synthea doctor` — environment checks (Java, cache, config, GitHub reachability, disk) via `DoctorCheck` + `IDiskSpaceProbe` / `IGitHubReachabilityProbe`. |
+| `ModulesCommand` | `synthea modules list / describe` — backed by `ModuleIntrospector`, which reads module JSON out of the cached JAR. |
 | `CliConfig` | Loads `~/.synthea-cli/config.json`; provides CLI > env > config > default precedence helpers. |
 | `JarManager` (`IJarSource`) | Locates/downloads/verifies the Synthea JAR; per-request `Authorization` header when a token is configured. |
-| `DefaultProcessRunner` (`IProcessRunner`) | Wraps `System.Diagnostics.Process` behind an interface so tests can stub. |
+| `JavaDetector` (`IJavaDetector`) | Discovers Java and enforces the Java 17+ floor (fail-fast with a clear message). |
+| `DefaultProcessRunner` (`IProcessRunner`) | Wraps `System.Diagnostics.Process` behind an interface so tests can stub (defined in `ProcessHelpers.cs`). |
+| `JavaHeapSizer` | Static helper; sizes `-Xmx` from population `-p`, overridable with `--java-heap`. |
+| `SyntheaErrorPatterns` | Static helper; maps Synthea stderr signatures to remediation hints and exit codes. |
+| `SyntheaProgressParser` | Static helper; parses Synthea progress output to drive `--progress`. |
 | `ILoggerFactory` | `Microsoft.Extensions.Logging` console provider; level driven by `--verbose` / `--quiet`. |
 | `HttpClient` | Built once at startup with `HTTPS_PROXY` / `HTTP_PROXY` honoured via `WebProxy`. |
 
@@ -212,7 +228,8 @@ Cross-platform: tested on Windows, macOS, Linux through the
 
 - [`docs/adr/`](../adr/) — Architecture Decision Records seeded for the
   major decisions documented above.
-- [`SyntheaCli-notes.md`](../../SyntheaCli-notes.md) — running design
-  register; finding IDs (A-N) referenced throughout.
 - [`SyntheaCli-notes-design-review.md`](../../SyntheaCli-notes-design-review.md)
-  — original architectural review that drove the work.
+  — original architectural review that drove the work; finding IDs (A-N)
+  referenced throughout.
+- [`docs/SyntheaCli-notes-v-next.md`](../SyntheaCli-notes-v-next.md) — v1.0.0
+  scope and the descope decisions (e.g. physiology) for the road ahead.

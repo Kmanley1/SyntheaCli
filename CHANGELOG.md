@@ -1,102 +1,102 @@
 # Changelog
 
-## [1.0.0] - 2025-08-09
-### 🎉 **Stable Release**
-This release marks the first stable version of SyntheaCli with comprehensive functionality and production-ready quality.
+All notable changes to **synthea-cli** are documented here. The format is based on
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-### 🔧 **Version & Documentation Updates** (2025-08-09)
-- **Updated Package Version**: Bumped from 0.2.0 to 1.0.0 to reflect maturity and stability
-- **Comprehensive README Overhaul**: Complete accuracy review and update of all documentation (commit f6459f1)
-  - Corrected Java version requirement from 17 to 11 (matches actual tested environment)
-  - Updated package version references from 0.2.0 to 1.0.0
-  - Fixed project structure documentation to match actual codebase
-  - Improved feature descriptions to reflect current capabilities
-  - Added accurate test coverage information (44 comprehensive tests)
-  - Updated Docker and setup script documentation for accuracy
+Released versions map 1:1 to `v*` git tags and to published
+[`synthea-cli`](https://www.nuget.org/packages/synthea-cli) NuGet versions. From v0.5.0
+onward, the per-release notes on the GitHub Releases page are generated automatically from
+Conventional Commits (`tools/extract-release-notes.ps1`).
 
-### 🧪 **Enhanced Integration Testing** (2025-08-08)
-- **Complete Integration Test Infrastructure**: Major improvements to test reliability and coverage (commit 0d241aa)
-- **Improved Java Detection**: Enhanced `CommandExists` method with robust Windows 'where' command implementation
-- **Test Isolation**: Unique output directories per test run to prevent interference
-- **Custom Exception Handling**: Added `SkipTestException` class for graceful test skipping when dependencies are missing
-- **Cross-Platform Java Discovery**: Fallback PATH search for Java executable detection
-- **Test Parallelization Control**: Disabled unit test parallelization to improve stability (commit adcb53d)
-- **Integration Test Fixes**: Handle missing Synthea wrapper scenarios gracefully (commit 00b5303)
+## [Unreleased]
 
-### 🛠 **Build & Environment Improvements** (2025-08-08)
-- **Enhanced Setup Scripts**: Comprehensive setup and environment documentation (commit f2836fa)
-- **Project Organization**: Updated .gitignore and third-party directory structure (commits 01c27c0, a353306)
-- **File Cleanup**: Removed obsolete PowerShell scripts for cleaner project structure (commit 3769820)
-- **Feature Parity Documentation**: Added comprehensive analysis between Java Synthea and SyntheaCli
+### Added
+- **Air-gapped Docker image** — a container bundling a self-contained build of the CLI plus a
+  pinned Synthea JAR (wired via `SYNTHEA_CLI_JAR_PATH`), published to GHCR on `v*` tags. Builds
+  behind an SSL-inspecting proxy by trusting an optional corporate root CA from `certs/`.
 
-### 🏗 **Technical Architecture** (2025-08-08)
-- **Module Refactoring**: Major refactor of run command into dedicated modules for better maintainability (commits b6474ac, a4ba92c)
-- **Branch Integration**: Successful merge of multiple feature branches including test improvements and command restructuring
-- **Master Branch Stability**: All changes merged and tested on master branch
+### Fixed
+- `synthea --version` now reports the real package version instead of the `1.0.0` assembly default.
+- `synthea --version` and `synthea doctor` now recognize a `--jar` / `SYNTHEA_CLI_JAR_PATH` / config
+  JAR instead of reporting "no JAR cached".
 
-### 📊 **Final Quality Metrics**
-- **44 Total Tests**: 40 unit tests + 4 integration tests with comprehensive coverage
-  - All CLI functionality thoroughly tested
-  - Java integration and environment detection validated
-  - Cross-platform compatibility verified
-- **Complete Feature Parity**: Full implementation of Synthea command-line interface
-- **Production Ready**: Stable API, comprehensive error handling, and robust Java integration
-- **Cross-Platform Support**: Verified Windows, Linux, and macOS compatibility  
-- **Java Compatibility**: Supports Java 11-24 with automatic detection and validation
+## [0.5.0] - 2026-05-17
 
-### 🎯 **Release Summary**
-Version 1.0.0 represents a significant milestone with production-ready quality, comprehensive testing, accurate documentation, and enhanced reliability. The solution now provides a stable, well-tested .NET CLI wrapper around Synthea with excellent user experience and robust error handling.
+Seventeen-plus feature PRs on top of v0.4.0.
 
-## [0.3.0] - 2025-08-08
-### Major Enhancements
-- **Complete .NET CLI Implementation**: Added comprehensive `RunCommand` and `RunOptions` classes with full parameter validation and System.CommandLine integration
-- **Process Management**: Implemented robust `ProcessHelpers` class for Java process execution with proper error handling and output capture
-- **JAR Management**: Enhanced `JarManager` with automatic Synthea JAR downloading, caching, and validation
-- **Java Integration**: Full compatibility with Java 11-24, with automatic Java detection and path resolution
+### Added
+- **Reproducibility controls** — `--reference-date`, `--end-date`, `--allow-future-end`,
+  `--clinician-seed`, `--single-person-seed`, `--overflow` for byte-for-byte reproducible
+  runs (#72).
+- **Arbitrary property passthrough** — `--property KEY=VALUE` (repeatable) forwards any
+  Synthea property the CLI doesn't model explicitly (#73).
+- **FHIR exporter coverage** — `--us-core-version 3.1.1|4|5|6|7` and `--fhir-version R5`
+  (#74); `--flexporter-mapping`, `--ig-dir`, `--bulk-data` for FHIR Bulk Data + custom IGs
+  (#75).
+- **`synthea doctor`** — environment check for Java, cache, config, network, and disk;
+  exits non-zero on any FAIL (#76).
+- **`synthea modules list` / `synthea modules describe`** — introspect the modules bundled
+  in the cached JAR (#77).
+- **`--progress`** — periodic status output during long runs (#81).
+- **Help & UX** — `--version` now reports the resolved JAR, `--help` carries worked
+  examples, and `--dry-run` is an alias for `--print-args` (#80).
 
-### Testing & Quality Improvements  
-- **Comprehensive Test Suite**: 44 total tests (40 unit tests + 4 integration tests)
-- **Integration Test Fixes**: Resolved test isolation issues with unique output directories per test run
-- **End-to-End Testing**: Full integration testing with actual Synthea JAR execution
-- **Test Environment Setup**: Automated Java dependency management for CI/CD
+### Changed
+- **JVM heap auto-sizing** — `-Xmx` is sized automatically from `-p` (population),
+  overridable with `--java-heap` (#78).
+- **Large-run ergonomics** — module separator is OS-corrected automatically, and output is
+  split into subfolders for big runs (#79).
+- README rewritten use-case-first; stale platform/version facts refreshed (#67).
 
-### Build & Environment
-- **Enhanced Setup Scripts**: Completely rewritten `setup.sh` for Linux/Ubuntu with ChatGPT Codex optimization
-- **Windows Setup Support**: New `setup.ps1` script with automatic Java installation via winget
-- **Centralized Build Output**: Improved build configuration using `Directory.Build.props` with artifacts directory
-- **Environment Validation**: Comprehensive environment checking and dependency installation
+### Fixed
+- Malformed config JSON now exits non-zero instead of being silently ignored (#69).
+- Synthea stderr is surfaced with remediation hints on failure (#70).
+- Unknown `--state` values are caught in preflight with a did-you-mean suggestion (#71).
 
-### CLI Features & Validation
-- **Parameter Validation**: Complete validation for all Synthea parameters including:
-  - State code validation (two-letter codes)
-  - ZIP code format validation (5 digits or 5+4)
-  - Gender validation (M/F)
-  - Age range validation (min-max format)
-  - FHIR version validation (R4/STU3)
-  - File path existence validation
-- **Error Handling**: User-friendly error messages with helpful guidance
-- **Help System**: Comprehensive help text with examples and parameter descriptions
+### ⚠️ Breaking
+- **Minimum Java raised to 17.** The CLI now fails fast with a clear message on Java < 17
+  (#68). Earlier 0.x releases accepted Java 11+.
 
-### Documentation & Developer Experience
-- **ChatGPT Codex Integration**: Added comprehensive `CODEX-SETUP.md` documentation
-- **Setup Documentation**: Detailed setup instructions for multiple platforms
-- **Feature Parity Analysis**: Comprehensive analysis confirming 85-90% feature parity with Java Synthea
-- **Troubleshooting Guide**: Complete troubleshooting documentation for common issues
+### CI / packaging
+- Golden-file `--help` stability tests (#82); NuGet icon, project URL, and refined tags
+  (#83); release notes auto-extracted from Conventional Commits on tag push (#84).
 
-### Technical Architecture
-- **Modular Design**: Clean separation of concerns with dedicated classes for commands, options, JAR management, and process handling
-- **Async Processing**: Proper async/await patterns for file operations and process execution
-- **Resource Management**: Proper disposal patterns and resource cleanup
-- **Cross-Platform Support**: Full Windows, Linux, and macOS compatibility
+## [0.4.0] - 2026-05-16
 
-### Bug Fixes
-- **Test Isolation**: Fixed integration test interference by using unique output directories
-- **File Path Resolution**: Improved CLI binary discovery for integration tests
-- **Java Version Compatibility**: Enhanced Java version detection and validation
-- **Build Output Paths**: Corrected artifact output paths for consistent builds
+### Changed
+- **Target framework upgraded from .NET 8 to .NET 10 (LTS)** (#66). Requires the .NET 10
+  runtime / SDK.
+
+## [0.3.1] - 2026-05-16
+
+### Fixed
+- `--state` now accepts both USPS two-letter codes (`OH`) and full state names (`Ohio`), in
+  both the validator and the value passed to Synthea (#65).
+
+## [0.3.0] - 2026-05-16
+
+First full .NET CLI implementation.
+
+### Added
+- `RunCommand` / `RunOptions` with full parameter validation and System.CommandLine
+  integration.
+- `JarManager` — automatic Synthea JAR download, caching, and optional checksum validation.
+- `ProcessHelpers` for robust Java process execution and output capture.
+- Parameter validation for state, ZIP, gender, age range, FHIR version, and file-path
+  existence, with user-friendly error messages and a full help system.
+- Cross-platform setup scripts (`setup.sh`, `setup.ps1`) and centralized build output via
+  `Directory.Build.props`.
+- Codex setup + troubleshooting documentation.
+
+> **Correction (2026-06-13):** earlier drafts of this file carried a `[1.0.0] - 2025-08-09`
+> entry and 2025-08 dates for 0.3.0. No `v1.0.0` was ever tagged or published, and the
+> 0.3.x–0.5.0 line actually shipped 2026-05-16/17. Those entries were aspirational /
+> auto-generated and have been removed so this changelog matches the real git tag and NuGet
+> release history.
 
 ## [0.2.0] - 2025-05-23
-- Numerous CLI enhancements compared to v0.1.0:
+- Numerous CLI enhancements over v0.1.0:
   - population size and random seed options
   - gender, age range, module, and ZIP filters
   - configuration file and FHIR version support
@@ -104,7 +104,7 @@ Version 1.0.0 represents a significant milestone with production-ready quality, 
   - output format selection (CSV, FHIR, etc.)
 - Windows `nuget-helper.ps1` script and improved `setup.sh` logic
 - Refactored `Program` and expanded unit tests
-- Update README and bump package version to 0.2.0.
+- README updates; package version bumped to 0.2.0.
 
-## [0.1.0] - Initial nuget-tool release
-- First packaged release of the synthea-cli .NET global tool.
+## [0.1.0] - 2025-05-20
+- First packaged release of the `synthea-cli` .NET global tool.

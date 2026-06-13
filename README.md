@@ -159,6 +159,28 @@ synthea run -o ./output -p 25 --state OH --gender F --age-range 30-50
 synthea run -o ./output -p 25 --state OH --jar /opt/synthea-with-dependencies.jar
 ```
 
+### Run with Docker (fully air-gapped)
+
+A container image bundles a self-contained build of the CLI **and** a pinned Synthea JAR, so it runs with no .NET install and no network access:
+
+```bash
+# Pull the published image
+docker pull ghcr.io/kmanley1/synthea-cli:latest
+
+# Generate 100 Ohio patients into ./out on the host.
+# -u matches the host user so the bind-mounted dir stays writable (the image
+# runs as a non-root user); Synthea writes under the mount's output/ subfolder.
+docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/out:/data" \
+    ghcr.io/kmanley1/synthea-cli run -o /data -p 100 --state OH --add-format CSV
+# → results in ./out/output/fhir, ./out/output/csv, ...
+```
+
+The image sets `SYNTHEA_CLI_JAR_PATH` to the baked-in JAR, so `JarManager` never calls GitHub. To bake a specific Synthea release instead of the latest, build locally with the `SYNTHEA_VERSION` build arg:
+
+```bash
+docker build --build-arg SYNTHEA_VERSION=v3.3.0 -t synthea-cli:syn-3.3.0 .
+```
+
 ### Behind a corporate proxy + with a GitHub token
 
 ```bash
@@ -302,7 +324,7 @@ dotnet run --project src/Synthea.Cli -- run -o ./out -p 5 --state OH
 ### Tests
 
 ```bash
-# Unit tests (fast; default; ~104 tests)
+# Unit tests (fast; default; ~312 tests)
 dotnet test --filter "Category!=Integration"
 
 # Integration tests (require Java on PATH; ~3 tests; ~30s)
@@ -314,7 +336,7 @@ dotnet test tests/Synthea.Cli.UnitTests/Synthea.Cli.UnitTests.csproj `
 # Coverage report in ./TestResults/**/coverage.cobertura.xml
 ```
 
-Coverage gate (enforced in CI): **≥ 80% line, ≥ 75% branch**. Current baseline: 86.96% line / 82.84% branch.
+Coverage gate (enforced in CI): **≥ 80% line, ≥ 75% branch**. Current baseline: 91.14% line / 84.51% branch.
 
 The unit suite includes golden-file `--help` tests that fail the build on accidental CLI-surface drift. When you intentionally change an option name, description, or add a new subcommand, regenerate the goldens in one shot:
 
@@ -366,12 +388,12 @@ SyntheaCli/
 │   ├─ ProcessHelpers.cs             # IProcessRunner / DefaultProcessRunner
 │   └─ Synthea.Cli.csproj
 ├─ tests/
-│   ├─ Synthea.Cli.UnitTests/        # 104 unit tests, full mocks
+│   ├─ Synthea.Cli.UnitTests/        # 312 unit tests, full mocks
 │   └─ Synthea.Cli.IntegrationTests/ # cross-platform end-to-end
 ├─ docs/
 │   ├─ deliverables/Architecture.md  # C4-style architecture
 │   └─ adr/                          # 5 Architecture Decision Records
-├─ .github/workflows/                # ci.yml, nuget.yml, codeql.yml
+├─ .github/workflows/                # ci, nuget, codeql, release-notes, docker
 ├─ tools/                            # setup.sh / setup.ps1 (CI bootstrap)
 └─ Synthea.Cli.sln
 ```

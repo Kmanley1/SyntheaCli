@@ -1,0 +1,3 @@
+# Never commit corporate/proxy root CAs — local build use only.
+*.crt
+*.pem
