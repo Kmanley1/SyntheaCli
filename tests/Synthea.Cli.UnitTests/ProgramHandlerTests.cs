@@ -849,7 +849,9 @@ public class ProgramHandlerTests : IDisposable
         var (stderr, code) = await RunCapturingStderr("run", "--output", Path.Combine(_tempDir, "out-prog-nopop"), "--state", "OH", "--progress");
         Assert.Equal(0, code);
         Assert.Contains("Generated 1 patients", stderr);
-        Assert.DoesNotContain("/0", stderr);
+        // No total was known, so the progress line must not render "Generated N/M".
+        // (Match the progress format, not a bare "/0" that also appears in temp paths.)
+        Assert.DoesNotContain("Generated 1/", stderr);
     }
 
     [Fact]
