@@ -11,6 +11,11 @@ Conventional Commits (`tools/extract-release-notes.ps1`).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-13
+
+First stable release. From here, the CLI flag surface, exit codes, and `config.json` keys form a
+SemVer 1.x public contract — see the README "Stability & versioning" section.
+
 ### Added
 - **Air-gapped Docker image** — a container bundling a self-contained build of the CLI plus a
   **pinned** Synthea release (v4.0.0), wired via `SYNTHEA_CLI_JAR_PATH`, published to GHCR on `v*`
