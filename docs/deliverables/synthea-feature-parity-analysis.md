@@ -1,5 +1,20 @@
 # Analysis: Synthea Java Solution vs SyntheaCli .NET Wrapper - Feature Parity Assessment
 
+> **⚠️ CORRECTION (2026-06-15, session 5ce094d9)** — This 2025-01 analysis is **stale on
+> two load-bearing points**, verified against `src/Synthea.Cli/RunCommand.cs`:
+>
+> - **Flexporter IS implemented** — `--flexporter-mapping` → Synthea `-fm`
+>   (`RunCommand.cs:974`, Phase 8 / A5). The "❌ Not implemented" Flexporter rows below
+>   are wrong.
+> - **Implementation Guide IS implemented** — `--ig-dir` → Synthea `-ig`
+>   (`RunCommand.cs:987`, Phase 8 / A8). **Scope caveat:** `-ig` ingests **ValueSets
+>   only** — it does **not** retype FHIR output (it cannot, e.g., turn a generic note
+>   into a typed Radiology `DocumentReference`). Source: Synthea typed-docs deep-research
+>   (DataArkCli ledger Obs 27).
+>
+> The body below is retained as historical record; treat every Flexporter/IG "missing"
+> claim as superseded.
+
 ## Executive Summary
 
 After conducting a comprehensive analysis of both the Java Synthea solution and the SyntheaCli .NET wrapper through deep code repository research, **the SyntheaCli solution has approximately 65-75% feature parity** with the Java version. While the .NET wrapper successfully implements core synthetic patient generation functionality, it lacks significant advanced features including physiology simulation, flexporter transformations, advanced temporal controls, and several specialized data generation capabilities.
